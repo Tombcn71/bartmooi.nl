@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Ster } from "./Icons";
 
 const HOST = "https://offerte.bartmooi.nl";
@@ -32,8 +33,9 @@ export function AiKnop({ onderwerp, variant = "groot", l }: { onderwerp?: string
         <button type="button" onClick={wissel} className="inline-flex h-[46px] items-center gap-3 bg-blauw px-[30px] text-[14px] font-bold uppercase tracking-[1.6px] text-white">
           <Ster /> {l.knopTekst}
         </button>
-        {geladen && (
-          <iframe title={l.venster} allow="microphone" src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`} className={`fixed inset-0 z-[2147483000] h-full w-full border-0 bg-white sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`} />
+        {geladen && createPortal(
+          <iframe title={l.venster} allow="microphone" src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`} className={`fixed inset-0 z-[2147483000] h-full w-full border-0 bg-white sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`} />,
+          document.body
         )}
       </>
     );
@@ -55,14 +57,15 @@ export function AiKnop({ onderwerp, variant = "groot", l }: { onderwerp?: string
           </span>
         </div>
       </div>
-      {geladen && (
+      {geladen && createPortal(
         <iframe
           ref={frame}
           title={l.venster}
           allow="microphone"
           src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`}
           className={`fixed inset-0 z-[2147483000] h-full w-full border-0 bg-white sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`}
-        />
+        />,
+        document.body
       )}
     </>
   );

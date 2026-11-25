@@ -7,7 +7,7 @@ import { faqPosts, kortAntwoord } from "../_content/faq";
 import { AiKnop } from "../_c/AiKnop";
 import { aiTeksten } from "../_c/teksten";
 import { Faq } from "../_c/Pagina";
-import { Reveal } from "../_c/Anim";
+import { Reveal } from "../_c/Onthul";
 import { Kalender } from "../_c/Icons";
 import { SITE } from "../_c/seo";
 import { Schema, blogPost } from "../_c/schema";

@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { Reveal, Teller } from "./Anim";
+import { Reveal } from "./Onthul";
+import { Teller } from "./Anim";
 import { Blauw, Container, Eyebrow, H2, Knop, Lnk } from "./ui";
 import { href, t, TB, tt } from "../_i18n";
 
@@ -105,7 +106,7 @@ export function Cijfers() {
         {tt(cijfers).map(([img, getal, teken, label]) => (
           <div key={label} className="flex flex-col items-center border-b border-black/10 pb-10 text-center last:border-0 last:pb-0 md:border-0 md:pb-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/img/${img}`} alt="" className="h-[68px] w-auto md:h-[74px]" />
+            <img src={`/img/${img}`} alt="" width={70} height={70} className="h-[68px] w-auto md:h-[74px]" />
             <p className="mt-[30px] flex items-start text-[36.8px] font-bold leading-[47px] text-zwart"><Teller tot={Number(getal)} /><span className="mt-[-6px] text-[27.2px] text-blauw">{teken}</span></p>
             <p className="text-[20.8px] font-bold leading-[25px]">{label}</p>
           </div>

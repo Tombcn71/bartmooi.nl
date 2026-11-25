@@ -1,7 +1,7 @@
 import { Schema, blogPost } from "../_c/schema";
 import Image from "next/image";
 import { Container, Lnk } from "../_c/ui";
-import { Reveal } from "../_c/Anim";
+import { Reveal } from "../_c/Onthul";
 import { nlSlug, postPad, postsVoor } from "../_content/postsvoor";
 import { Titel } from "../_c/Pagina";
 import { getTaal, t } from "../_i18n";

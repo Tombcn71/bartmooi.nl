@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { Reveal, Teller } from "./Anim";
+import { Reveal } from "./Onthul";
+import { Teller } from "./Anim";
 import { Container, Eyebrow, H2, Vinkje } from "./ui";
 import { t, TB } from "../_i18n";
 

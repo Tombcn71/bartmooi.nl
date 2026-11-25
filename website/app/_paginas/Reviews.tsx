@@ -1,7 +1,8 @@
 import { JsonLd, kruimel } from "../_c/JsonLd";
 import Image from "next/image";
 import { Blauw, Container, H2 } from "../_c/ui";
-import { Reveal, Teller } from "../_c/Anim";
+import { Reveal } from "../_c/Onthul";
+import { Teller } from "../_c/Anim";
 import { Cta } from "../_c/Sections2";
 import { Titel } from "../_c/Pagina";
 import { Schema } from "../_c/schema";

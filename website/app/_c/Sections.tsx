@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { Reveal, Teller } from "./Anim";
+import { Reveal } from "./Onthul";
+import { Teller } from "./Anim";
 import { Blauw, Container, Eyebrow, H2, Knop, Vinkje } from "./ui";
 import { href, t, TB, tt } from "../_i18n";
 

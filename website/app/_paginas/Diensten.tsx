@@ -1,7 +1,7 @@
 import { Schema, dienst } from "../_c/schema";
 import Image from "next/image";
 import { Blauw, Container, Eyebrow, H2 } from "../_c/ui";
-import { Reveal } from "../_c/Anim";
+import { Reveal } from "../_c/Onthul";
 import { Cta } from "../_c/Sections2";
 import { DienstKaart, Faq, Prijstabel, Titel, Uitklap } from "../_c/Pagina";
 import { euro, haalPrijzen, omschrijving } from "../_content/prijzen";

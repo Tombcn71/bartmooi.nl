@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Reveal } from "./Anim";
+import { Reveal } from "./Onthul";
 import { Lnk } from "./ui";
 import { t } from "../_i18n";
 

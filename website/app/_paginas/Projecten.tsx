@@ -1,6 +1,6 @@
 import { Schema } from "../_c/schema";
 import { Blauw, Container, Eyebrow, H2, Vinkje } from "../_c/ui";
-import { Reveal } from "../_c/Anim";
+import { Reveal } from "../_c/Onthul";
 import { Cta } from "../_c/Sections2";
 import { Mozaiek } from "../_c/Mozaiek";
 import { href, t, TB, tt } from "../_i18n";

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { Direct, Reveal } from "./Anim";
+import { Direct, Reveal } from "./Onthul";
 import { Container, Knop } from "./ui";
 import { href, t, TB } from "../_i18n";
 

@@ -3,6 +3,7 @@ import { HTML_TAAL, setTaal, t, type Taal } from "../_i18n";
 import { overpass, overpassPl } from "./lettertype";
 import { Kop } from "./Kop";
 import { Voet } from "./Voet";
+import { OnthulScript } from "./Onthul";
 
 /** De hele pagina: <html lang> in de juiste taal, kop, inhoud en voet. Elke taalmap heeft zijn eigen root-layout. */
 export function Wortel({ taal, children }: { taal: Taal; children: ReactNode }) {
@@ -14,6 +15,7 @@ export function Wortel({ taal, children }: { taal: Taal; children: ReactNode }) 
         <Kop />
         <main id="inhoud">{children}</main>
         <Voet />
+        <OnthulScript />
       </body>
     </html>
   );

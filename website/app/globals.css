@@ -19,7 +19,7 @@
 @keyframes zoomIn { from { opacity: 0; transform: scale3d(0.3, 0.3, 0.3); } 50% { opacity: 1; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .reveal { visibility: hidden; }
-.reveal.aan { visibility: visible; animation-duration: 1.25s; animation-fill-mode: both; }
+.reveal.aan { visibility: visible; animation-duration: 1.25s; animation-fill-mode: both; animation-delay: var(--d, 0s); }
 .reveal.aan.fadeInUp { animation-name: fadeInUp; }
 .reveal.aan.fadeInDown { animation-name: fadeInDown; }
 .reveal.aan.fadeInLeft { animation-name: fadeInLeft; }
@@ -63,3 +63,17 @@
 
 /* De tweede sectie blijft buiten beschouwing: die valt vaak over de kop heen (negatieve marge) en zou anders worden afgesneden. Onderdelen onder de vouw worden pas getekend (en hun afbeeldingen pas geladen) als ze dichtbij komen: sneller eerste beeld. */
 main > section ~ section ~ section, main > section ~ section ~ div, footer { content-visibility: auto; contain-intrinsic-size: auto 700px; }
+
+/* Vertragingen van de animaties (klassen in plaats van inline stijl) */
+.dl-100 { --d: 100ms; } .vz-100 { animation-delay: 100ms; }
+.dl-200 { --d: 200ms; } .vz-200 { animation-delay: 200ms; }
+.dl-300 { --d: 300ms; } .vz-300 { animation-delay: 300ms; }
+.dl-400 { --d: 400ms; } .vz-400 { animation-delay: 400ms; }
+.dl-500 { --d: 500ms; } .vz-500 { animation-delay: 500ms; }
+.dl-600 { --d: 600ms; } .vz-600 { animation-delay: 600ms; }
+.dl-700 { --d: 700ms; } .vz-700 { animation-delay: 700ms; }
+.dl-800 { --d: 800ms; } .vz-800 { animation-delay: 800ms; }
+.dl-900 { --d: 900ms; } .vz-900 { animation-delay: 900ms; }
+.dl-1000 { --d: 1000ms; } .vz-1000 { animation-delay: 1000ms; }
+.dl-1100 { --d: 1100ms; } .vz-1100 { animation-delay: 1100ms; }
+.dl-1200 { --d: 1200ms; } .vz-1200 { animation-delay: 1200ms; }

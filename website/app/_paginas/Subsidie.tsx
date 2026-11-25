@@ -1,7 +1,8 @@
 import { JsonLd, kruimel } from "../_c/JsonLd";
 import Image from "next/image";
 import { Blauw, Container, Eyebrow, H2, Knop, Vinkje } from "../_c/ui";
-import { Direct, Reveal, Teller } from "../_c/Anim";
+import { Direct, Reveal } from "../_c/Onthul";
+import { Teller } from "../_c/Anim";
 import { Cta } from "../_c/Sections2";
 import { Schema, dienst } from "../_c/schema";
 import { Faq } from "../_c/Pagina";

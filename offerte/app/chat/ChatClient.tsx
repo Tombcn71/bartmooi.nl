@@ -125,8 +125,8 @@ export default function Chat({ taal }: { taal: Taal }) {
   }
 
   return (
-    <div className="fixed inset-0 mx-auto flex h-[100dvh] w-full flex-col overflow-hidden bg-white sm:w-auto sm:static sm:inset-auto sm:my-6 sm:max-w-sm sm:h-[min(560px,calc(100dvh-3rem))] sm:overflow-hidden sm:rounded-2xl sm:shadow-xl">
-      <div className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-[#1E5079] px-4 py-3 text-white">
+    <div className="fixed inset-0 mx-auto flex h-full w-full flex-col overflow-hidden bg-white sm:w-auto sm:static sm:inset-auto sm:my-6 sm:max-w-sm sm:h-[min(560px,calc(100dvh-3rem))] sm:overflow-hidden sm:rounded-2xl sm:shadow-xl">
+      <div className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-[#1E5079] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
         <style>{`@keyframes bmglans{0%{left:-60%}55%,100%{left:140%}}`}</style>
         <span aria-hidden className="pointer-events-none absolute top-0 h-full w-[40%] -skew-x-[20deg] bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ left: "-60%", animation: "bmglans 3.2s ease-in-out infinite" }} />
         <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#1E5079]">

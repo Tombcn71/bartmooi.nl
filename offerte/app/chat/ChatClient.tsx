@@ -125,8 +125,8 @@ export default function Chat({ taal }: { taal: Taal }) {
   }
 
   return (
-    <div className="fixed inset-0 mx-auto flex flex-col bg-white sm:static sm:inset-auto sm:my-6 sm:max-w-sm sm:h-[min(560px,calc(100dvh-3rem))] sm:overflow-hidden sm:rounded-2xl sm:shadow-xl">
-      <div className="relative flex items-center gap-3 overflow-hidden bg-[#1E5079] px-4 py-3 text-white">
+    <div className="fixed inset-0 mx-auto flex h-[100dvh] w-full flex-col overflow-hidden bg-white sm:w-auto sm:static sm:inset-auto sm:my-6 sm:max-w-sm sm:h-[min(560px,calc(100dvh-3rem))] sm:overflow-hidden sm:rounded-2xl sm:shadow-xl">
+      <div className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-[#1E5079] px-4 py-3 text-white">
         <style>{`@keyframes bmglans{0%{left:-60%}55%,100%{left:140%}}`}</style>
         <span aria-hidden className="pointer-events-none absolute top-0 h-full w-[40%] -skew-x-[20deg] bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ left: "-60%", animation: "bmglans 3.2s ease-in-out infinite" }} />
         <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#1E5079]">
@@ -140,7 +140,7 @@ export default function Chat({ taal }: { taal: Taal }) {
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>}
       </div>
-      <div ref={lijst} className="relative flex-1 space-y-3 overflow-y-auto bg-[#f4f7fa] p-4">
+      <div ref={lijst} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[#f4f7fa] p-4">
         {berichten.map((b, i) => (
           <div key={i} ref={i === berichten.length - 1 ? laatste : undefined} className={`flex ${b.rol === "klant" ? "justify-end" : "justify-start"}`}>
             <p className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-snug ${b.rol === "klant" ? "bg-[#dbe8f4] text-[#13334D]" : "bg-white text-[#13334D] shadow-sm"}`}>{i === 0 ? <>{linkjes(welkom.slice(0, getypt), x.naarRoos)}{!klaarMetTypen && <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-[#1E5079]" />}</> : linkjes(splitsOpties(b.tekst).tekst, x.naarRoos)}</p>
@@ -163,14 +163,14 @@ export default function Chat({ taal }: { taal: Taal }) {
         {bezig && <p className="text-sm text-black/40">{x.denken}</p>}
         <div ref={onder} />
       </div>
-      <form onSubmit={stuur} className="flex gap-2 bg-white p-3">
-        <input value={invoer} onChange={(e) => setInvoer(e.target.value)} placeholder={x.plek} className="min-w-0 flex-1 rounded-full border border-black/15 px-4 py-2.5 text-[15px] outline-none focus:border-[#1E5079]" />
+      <form onSubmit={stuur} className="flex shrink-0 gap-2 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <input value={invoer} onChange={(e) => setInvoer(e.target.value)} placeholder={x.plek} className="min-w-0 flex-1 rounded-full border border-black/15 px-4 py-2.5 text-base outline-none focus:border-[#1E5079]" />
         {kanSpraak && (
           <button type="button" onClick={spreek} aria-label={luistert ? x.micStop : x.micStart} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${luistert ? "animate-pulse border-red-500 bg-red-50 text-red-600" : "border-black/15 text-[#1E5079]"}`}>
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v4" /></svg>
           </button>
         )}
-        <button disabled={bezig || !invoer.trim()} className="rounded-full bg-[#1E5079] px-5 font-bold text-white disabled:opacity-40">{x.stuur}</button>
+        <button disabled={bezig || !invoer.trim()} className="shrink-0 rounded-full bg-[#1E5079] px-4 font-bold text-white disabled:opacity-40">{x.stuur}</button>
       </form>
     </div>
   );

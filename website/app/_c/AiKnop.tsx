@@ -34,7 +34,7 @@ export function AiKnop({ onderwerp, variant = "groot", l }: { onderwerp?: string
           <Ster /> {l.knopTekst}
         </button>
         {geladen && createPortal(
-          <iframe title={l.venster} allow="microphone" src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`} className={`fixed inset-0 z-[2147483000] h-[100dvh] w-full border-0 bg-white sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`} />,
+          <><div onClick={() => setOpen(false)} className={`fixed inset-0 z-[2147482999] bg-black/40 sm:hidden ${open ? "block" : "hidden"}`} /><iframe title={l.venster} allow="microphone" src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`} className={`fixed left-3 right-3 top-[max(12px,env(safe-area-inset-top))] bottom-[max(12px,env(safe-area-inset-bottom))] z-[2147483000] h-auto w-auto rounded-2xl border-0 bg-white shadow-[0_10px_40px_rgba(0,0,0,.35)] sm:inset-auto sm:left-auto sm:top-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`} /></>,
           document.body
         )}
       </>
@@ -58,13 +58,13 @@ export function AiKnop({ onderwerp, variant = "groot", l }: { onderwerp?: string
         </div>
       </div>
       {geladen && createPortal(
-        <iframe
+        <><div onClick={() => setOpen(false)} className={`fixed inset-0 z-[2147482999] bg-black/40 sm:hidden ${open ? "block" : "hidden"}`} /><iframe
           ref={frame}
           title={l.venster}
           allow="microphone"
           src={`${HOST}/chat?ingebed=1&lang=${l.taal}${onderwerp ? `&topic=${encodeURIComponent(onderwerp)}` : ""}`}
-          className={`fixed inset-0 z-[2147483000] h-[100dvh] w-full border-0 bg-white sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`}
-        />,
+          className={`fixed left-3 right-3 top-[max(12px,env(safe-area-inset-top))] bottom-[max(12px,env(safe-area-inset-bottom))] z-[2147483000] h-auto w-auto rounded-2xl border-0 bg-white shadow-[0_10px_40px_rgba(0,0,0,.35)] sm:inset-auto sm:left-auto sm:top-auto sm:bottom-5 sm:right-5 sm:h-[min(520px,calc(100vh-40px))] sm:w-[340px] sm:rounded-2xl sm:shadow-[0_10px_40px_rgba(0,0,0,.3)] ${open ? "block" : "hidden"}`}
+        /></>,
         document.body
       )}
     </>

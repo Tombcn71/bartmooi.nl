@@ -92,8 +92,6 @@ export async function POST(req: Request) {
     de: "Kozijn=Fenster, Deur=Tür, Schuifpui=Schiebetür, Rolluik=Rollladen, Hor=Insektenschutz; Waarvoor wilt u een prijs?=Wofür möchten Sie einen Preis?; Alleen vast glas=Nur Festverglasung, Draai-kiep=Dreh-Kipp, Draai-kiep met vast deel=Dreh-Kipp mit Festteil, Dat weet ik niet=Weiß ich nicht; Dubbel glas=Zweifachverglasung, Triple glas=Dreifachverglasung; Ja, nog iets=Ja, noch etwas, Nee, dat is alles=Nein, das ist alles",
     pl: "Kozijn=Okno, Deur=Drzwi, Schuifpui=Drzwi przesuwne, Rolluik=Roleta zewnętrzna, Hor=Moskitiera; Waarvoor wilt u een prijs?=Dla jakiego produktu chcą Państwo poznać cenę?; Alleen vast glas=Tylko szyba stała, Draai-kiep=Rozwierno-uchylne, Draai-kiep met vast deel=Rozwierno-uchylne ze stałą częścią, Dat weet ik niet=Nie wiem; Dubbel glas=Szyba podwójna, Triple glas=Szyba potrójna; Ja, nog iets=Tak, jeszcze coś, Nee, dat is alles=Nie, to wszystko",
   };
-  const ANDERE_TALEN_AAN = false; // tijdelijk uit (presentatie); zet op true om en, de en pl weer te openen
-  if (!ANDERE_TALEN_AAN) body.taal = undefined;
   const taalNaam = body.taal ? TAAL_NAAM[body.taal] : undefined;
   const woordenlijst = body.taal ? WOORDENLIJST[body.taal] : undefined;
   const berichten = (body.berichten ?? [])

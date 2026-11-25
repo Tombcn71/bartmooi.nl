@@ -9,3 +9,5 @@ Eén repository, drie onderdelen. Elk onderdeel is een eigen Vercel-project (Roo
 | `kantoor/` | administratie: werkbonnen en uren, projecten, facturen | kantoor.bartmooi.nl |
 
 Geheime sleutels staan niet in de repo (`.env*` wordt genegeerd); ze staan in Vercel per project.
+
+Eén repo, drie Vercel-projecten: website (bartmooi.nl), offerte, kantoor. Root Directory per project = de map.

@@ -87,7 +87,13 @@ export async function POST(req: Request) {
   if (!key) return Response.json({ fout: "De chat is nu niet beschikbaar." }, { status: 500 });
   const body = (await req.json().catch(() => ({}))) as { berichten?: { rol: string; tekst: string }[]; taal?: string };
   const TAAL_NAAM: Record<string, string> = { en: "Engels", de: "Duits", pl: "Pools" };
+  const WOORDENLIJST: Record<string, string> = {
+    en: "Kozijn=Window, Deur=Door, Schuifpui=Sliding door, Rolluik=Roller shutter, Hor=Insect screen; Waarvoor wilt u een prijs?=What would you like a price for?; Alleen vast glas=Fixed glass only, Draai-kiep=Tilt-and-turn, Draai-kiep met vast deel=Tilt-and-turn with fixed part, Dat weet ik niet=I don't know; Dubbel glas=Double glazing, Triple glas=Triple glazing; Ja, nog iets=Yes, something else, Nee, dat is alles=No, that's all",
+    de: "Kozijn=Fenster, Deur=Tür, Schuifpui=Schiebetür, Rolluik=Rollladen, Hor=Insektenschutz; Waarvoor wilt u een prijs?=Wofür möchten Sie einen Preis?; Alleen vast glas=Nur Festverglasung, Draai-kiep=Dreh-Kipp, Draai-kiep met vast deel=Dreh-Kipp mit Festteil, Dat weet ik niet=Weiß ich nicht; Dubbel glas=Zweifachverglasung, Triple glas=Dreifachverglasung; Ja, nog iets=Ja, noch etwas, Nee, dat is alles=Nein, das ist alles",
+    pl: "Kozijn=Okno, Deur=Drzwi, Schuifpui=Drzwi przesuwne, Rolluik=Roleta zewnętrzna, Hor=Moskitiera; Waarvoor wilt u een prijs?=Dla jakiego produktu chcą Państwo poznać cenę?; Alleen vast glas=Tylko szyba stała, Draai-kiep=Rozwierno-uchylne, Draai-kiep met vast deel=Rozwierno-uchylne ze stałą częścią, Dat weet ik niet=Nie wiem; Dubbel glas=Szyba podwójna, Triple glas=Szyba potrójna; Ja, nog iets=Tak, jeszcze coś, Nee, dat is alles=Nie, to wszystko",
+  };
   const taalNaam = body.taal ? TAAL_NAAM[body.taal] : undefined;
+  const woordenlijst = body.taal ? WOORDENLIJST[body.taal] : undefined;
   const berichten = (body.berichten ?? [])
     .slice(-12)
     .filter((b) => (b.rol === "klant" || b.rol === "chat") && typeof b.tekst === "string" && b.tekst.trim())
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
         thinking: { type: "disabled" },
         system: [
           { type: "text", text: SYSTEEM, cache_control: { type: "ephemeral" } },
-          ...(taalNaam ? [{ type: "text" as const, text: `De bezoeker gebruikt dit chatscherm in het ${taalNaam}. Antwoord vanaf het eerste bericht in het ${taalNaam}, ook de keuzes na [opties: …]. De prijsvraag-flow en de doorverwijzing naar Roos gelden ook als de bezoeker dezelfde wens in het ${taalNaam} uitspreekt (bijvoorbeeld een prijs of offerte willen, of subsidie willen aanvragen).` }] : []),
+          ...(taalNaam ? [{ type: "text" as const, text: `De bezoeker gebruikt dit chatscherm in het ${taalNaam}. Schrijf elk antwoord volledig in het ${taalNaam}, zonder een woord Nederlands. Dat geldt ook voor de vragen uit de prijsflow en voor alle keuzes na [opties: …]: gebruik voor de keuzes precies deze vertalingen (Nederlands=${taalNaam}): ${woordenlijst}. Vertaal ook de vragen zelf, zoals "Waarvoor wilt u een prijs?", volledig. Alleen de naam Roos en de offerte-link blijven zoals ze zijn. De prijsflow en de doorverwijzing naar Roos gelden ook als de bezoeker dezelfde wens in het ${taalNaam} uitspreekt (bijvoorbeeld een prijs of offerte willen, of subsidie willen aanvragen), en je reken de prijzen precies zoals altijd uit.` }] : []),
         ],
         tools: [PRIJS_TOOL, PRODUCT_TOOL],
         messages: gesprek,

@@ -1,6 +1,8 @@
 import Chat, { type Taal } from "./ChatClient";
 
-const TALEN = ["nl", "en", "de", "pl"];
+// Tijdelijk alleen Nederlands (presentatie). Zet ANDERE_TALEN_AAN op true om en, de en pl weer te openen.
+const ANDERE_TALEN_AAN = false;
+const TALEN = ANDERE_TALEN_AAN ? ["nl", "en", "de", "pl"] : ["nl"];
 
 export default async function Pagina({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const { lang } = await searchParams;

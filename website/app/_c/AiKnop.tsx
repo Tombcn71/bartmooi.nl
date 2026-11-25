@@ -40,7 +40,7 @@ export function AiKnop({ onderwerp, variant = "groot", l }: { onderwerp?: string
   }
   return (
     <>
-      <div className="mt-10 w-full max-w-[440px] rounded-[18px] bg-blauw/25 p-[10px] md:-ml-2.5 md:w-[440px]">
+      <div className="mt-[50px] w-full max-w-[420px] md:w-[420px]">
         <div
           role="button"
           tabIndex={0}

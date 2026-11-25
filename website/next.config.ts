@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
   // Oude WordPress-adressen blijven werken (en houden hun plek in Google).
   async redirects() {
     return [
+      // Tijdelijk: de andere talen zijn nog niet zichtbaar. Verwijder deze drie regels om /en, /de en /pl weer te openen.
+      { source: "/en/:path*", destination: "/", permanent: false },
+      { source: "/de/:path*", destination: "/", permanent: false },
+      { source: "/pl/:path*", destination: "/", permanent: false },
       { source: "/sitemap_index.xml", destination: "/sitemap.xml", permanent: true },
       { source: "/wp-sitemap.xml", destination: "/sitemap.xml", permanent: true },
       { source: "/post-sitemap.xml", destination: "/sitemap.xml", permanent: true },

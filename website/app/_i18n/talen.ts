@@ -5,7 +5,8 @@ export const HTML_TAAL: Record<Taal, string> = { nl: "nl-NL", en: "en", de: "de"
 export const OG_TAAL: Record<Taal, string> = { nl: "nl_NL", en: "en_GB", de: "de_DE", pl: "pl_PL" };
 
 /** Welke talen er echt bestaan. Zet een taal hier pas aan als zijn pagina's klaar zijn. */
-export const ACTIEF: Taal[] = ["nl", "pl", "de", "en"];
+// Tijdelijk alleen Nederlands zichtbaar (presentatie). Terug naar ["nl", "pl", "de", "en"] om de andere talen weer te tonen.
+export const ACTIEF: Taal[] = ["nl"];
 /** Talen met een eigen blog (vertaalde artikelen). */
 export const BLOG_TALEN: Taal[] = ["nl", "pl", "de", "en"];
 

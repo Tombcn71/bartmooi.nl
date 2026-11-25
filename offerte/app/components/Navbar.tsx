@@ -1,0 +1,172 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { CartButton } from "./CartButton";
+import { useBron } from "@/lib/use-bron";
+
+const NAV_ITEMS = [
+  {
+    label: "Kozijnen",
+    items: [
+      { label: "Kunststof kozijnen", href: "/kozijnen" },
+      { label: "Aluminium kozijnen", href: "/aluminium/kozijnen" },
+    ],
+  },
+  {
+    label: "Deuren",
+    items: [
+      { label: "Kunststof deuren", href: "/deuren" },
+      { label: "Aluminium deuren", href: "/aluminium/deuren" },
+    ],
+  },
+  {
+    label: "Harmonicadeur",
+    items: [
+      { label: "Aluminium harmonicadeur", href: "/aluminium/harmonicadeur" },
+    ],
+  },
+  {
+    label: "Schuifpui",
+    items: [
+      { label: "Kunststof schuifpui", href: "/schuifpui" },
+      { label: "Aluminium schuifpui", href: "/aluminium/schuifpui" },
+    ],
+  },
+  {
+    label: "Rolluiken",
+    items: [
+      { label: "Rolluik",        href: "/rolluiken" },
+      { label: "Inbouw rolluik", href: "/rolluiken" },
+      { label: "Screens",        href: "/rolluiken" },
+    ],
+  },
+  {
+    label: "Horren",
+    items: [
+      { label: "Inzethor",       href: "/horren" },
+      { label: "Klemhor",        href: "/horren" },
+      { label: "Plisse hordeur", href: "/horren" },
+    ],
+  },
+];
+
+function DropdownItem({ label, items }: { label: string; items: { label: string; href: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 hover:text-brand-text transition-colors">
+        {label}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d={open ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
+          {items.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-text transition-colors">
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const Navbar = () => {
+  const bron = useBron();
+  const [isOpen, setIsOpen] = useState(false);
+  const [openMobile, setOpenMobile] = useState<string | null>(null);
+  const [isOfferte, setIsOfferte] = useState(false);
+
+  useEffect(() => {
+    setIsOfferte(true);
+  }, []);
+
+  return (
+    <nav className={`w-full bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50 ${bron === "onspot" ? "hidden md:block" : ""}`}>
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-20 md:h-24 flex items-center justify-between">
+        {/* Links: het hamburgermenu (telefoon) of het menu (computer). Geen logo. */}
+        <div className="flex items-center gap-2 md:gap-8">
+          {isOfferte && (
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Menu"
+              className="md:hidden p-2 -ml-2 text-brand-text">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {isOpen ? <path d="M18 6L6 18M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
+              </svg>
+            </button>
+          )}
+          {isOfferte && (
+            <div className="hidden md:flex items-center gap-8 text-sm font-bold text-[#2d3748] uppercase tracking-tight">
+              {NAV_ITEMS.map((item) => (
+                <DropdownItem key={item.label} label={item.label} items={item.items} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Rechts: de offerte */}
+        <div className="flex items-center gap-2 md:gap-4">{isOfferte && <CartButton />}</div>
+      </div>
+
+      {/* Mobiel menu */}
+      {isOfferte && (
+        <div className={`md:hidden overflow-hidden transition-all bg-white border-t ${isOpen ? "max-h-screen" : "max-h-0"}`}>
+          <div className="flex flex-col p-4 gap-1 font-bold text-[#2d3748] uppercase">
+            <a
+              href="https://bartmooi.nl"
+              className="py-3 mb-1 border-b border-gray-100 text-sm text-brand-text normal-case">
+              ← Terug naar bartmooi.nl
+            </a>
+            {NAV_ITEMS.map((item) => (
+              <div key={item.label}>
+                <button
+                  onClick={() => setOpenMobile(openMobile === item.label ? null : item.label)}
+                  className="w-full flex justify-between items-center py-3 hover:text-brand-text transition-colors">
+                  {item.label}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d={openMobile === item.label ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
+                  </svg>
+                </button>
+                {openMobile === item.label && (
+                  <div className="flex flex-col pl-4 pb-2 gap-1">
+                    {item.items.map((sub) => (
+                      <Link
+                        key={sub.label}
+                        href={sub.href}
+                        onClick={() => { setIsOpen(false); setOpenMobile(null); }}
+                        className="py-2 text-sm font-medium text-slate-500 hover:text-brand-text normal-case">
+                        {sub.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+export default Navbar;

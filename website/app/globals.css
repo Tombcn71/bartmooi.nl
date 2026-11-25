@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@theme inline {
+  --font-sans: var(--font-overpass), sans-serif;
+  --color-navy: #13334d;
+  --color-blauw: #1e5079;
+  --color-kop: #10649e;
+  --color-licht: #f5f6f7;
+  --color-tekst: #6b6b6b; /* was #7a7a7a: te licht voor goede leesbaarheid */
+  --color-oranje: #c24f26; /* was #f08661: wit op oranje had te weinig contrast */
+  --color-oranje-tekst: #b5502b; /* oranje tekst op lichte achtergrond */
+  --color-zwart: #1f1f1f;
+}
+
+/* Animaties: dezelfde bewegingen en tijden als de oude site */
+@keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 100%, 0); } to { opacity: 1; transform: none; } }
+@keyframes fadeInDown { from { opacity: 0; transform: translate3d(0, -100%, 0); } to { opacity: 1; transform: none; } }
+@keyframes fadeInLeft { from { opacity: 0; transform: translate3d(-100%, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes slideInLeft { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes zoomIn { from { opacity: 0; transform: scale3d(0.3, 0.3, 0.3); } 50% { opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.reveal { visibility: hidden; }
+.reveal.aan { visibility: visible; animation-duration: 1.25s; animation-fill-mode: both; }
+.reveal.aan.fadeInUp { animation-name: fadeInUp; }
+.reveal.aan.fadeInDown { animation-name: fadeInDown; }
+.reveal.aan.fadeInLeft { animation-name: fadeInLeft; }
+.reveal.aan.slideInLeft { animation-name: slideInLeft; }
+.reveal.aan.zoomIn { animation-name: zoomIn; }
+.reveal.aan.fadeIn { animation-name: fadeIn; }
+@media (prefers-reduced-motion: reduce) { .reveal { visibility: visible; } .reveal.aan { animation: none; } }
+
+/* Lopende tekst (blogs en privacybeleid): koppen, alinea's en lijsten zoals op de oude site */
+.tekst h2 { margin: 8px 0 16px; font-size: 34px; line-height: 1.2; font-weight: 700; letter-spacing: -1.2px; color: #1f1f1f; }
+.tekst h3 { margin: 8px 0 12px; font-size: 24px; line-height: 1.2; font-weight: 700; color: #1f1f1f; }
+.tekst p { margin: 0 0 21.6px; }
+.tekst ul, .tekst ol { margin: 0 0 21.6px; padding-left: 28px; list-style: disc; }
+.tekst ol { list-style: decimal; }
+.tekst li { margin-bottom: 4px; }
+.tekst a { color: #cc3366; font-weight: 600; }
+.tekst strong { font-weight: 700; }
+.tekst img { margin: 0 0 21.6px; height: auto; max-width: 100%; }
+@media (min-width: 768px) { .tekst h2 { font-size: 48px; line-height: 57.6px; letter-spacing: -1.5px; } }
+
+/* Knop "Prijs & advies direct" met glans en puls */
+@keyframes glans { 0% { left: -60%; } 55%, 100% { left: 140%; } }
+@keyframes puls {
+  0% { box-shadow: 0 0 0 0 rgba(30, 80, 121, 0.55), 0 6px 22px rgba(30, 80, 121, 0.35); }
+  70% { box-shadow: 0 0 0 14px rgba(30, 80, 121, 0), 0 6px 22px rgba(30, 80, 121, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(30, 80, 121, 0), 0 6px 22px rgba(30, 80, 121, 0.35); }
+}
+.ai-knop { animation: puls 2s infinite; }
+.ai-knop::after { content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent); transform: skewX(-20deg); animation: glans 3.2s ease-in-out infinite; }
+
+.direct { animation-duration: 1.25s; animation-fill-mode: both; }
+.direct.fadeInDown { animation-name: directInDown; }
+.direct.fadeInUp { animation-name: directInUp; }
+.direct.fadeInLeft { animation-name: fadeInLeft; }
+.direct.fadeIn { animation-name: fadeIn; }
+@media (prefers-reduced-motion: reduce) { .direct { animation: none; } }
+
+/* Voor wat meteen in beeld staat: begint bijna onzichtbaar (niet helemaal), zodat de pagina direct als 'getekend' telt. */
+@keyframes directInDown { from { opacity: 0.02; } to { opacity: 1; } }
+@keyframes directInUp { from { opacity: 0.02; } to { opacity: 1; } }
+
+/* De tweede sectie blijft buiten beschouwing: die valt vaak over de kop heen (negatieve marge) en zou anders worden afgesneden. Onderdelen onder de vouw worden pas getekend (en hun afbeeldingen pas geladen) als ze dichtbij komen: sneller eerste beeld. */
+main > section ~ section ~ section, main > section ~ section ~ div, footer { content-visibility: auto; contain-intrinsic-size: auto 700px; }

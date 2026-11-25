@@ -85,7 +85,9 @@ export async function POST(req: Request) {
   if (!toegestaan(req)) return Response.json({ fout: "Te veel vragen. Probeer het later opnieuw." }, { status: 429 });
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return Response.json({ fout: "De chat is nu niet beschikbaar." }, { status: 500 });
-  const body = (await req.json().catch(() => ({}))) as { berichten?: { rol: string; tekst: string }[] };
+  const body = (await req.json().catch(() => ({}))) as { berichten?: { rol: string; tekst: string }[]; taal?: string };
+  const TAAL_NAAM: Record<string, string> = { en: "Engels", de: "Duits", pl: "Pools" };
+  const taalNaam = body.taal ? TAAL_NAAM[body.taal] : undefined;
   const berichten = (body.berichten ?? [])
     .slice(-12)
     .filter((b) => (b.rol === "klant" || b.rol === "chat") && typeof b.tekst === "string" && b.tekst.trim())
@@ -113,7 +115,10 @@ export async function POST(req: Request) {
         model: MODEL,
         max_tokens: 1500,
         thinking: { type: "disabled" },
-        system: [{ type: "text", text: SYSTEEM, cache_control: { type: "ephemeral" } }],
+        system: [
+          { type: "text", text: SYSTEEM, cache_control: { type: "ephemeral" } },
+          ...(taalNaam ? [{ type: "text" as const, text: `De bezoeker gebruikt dit chatscherm in het ${taalNaam}. Antwoord vanaf het eerste bericht in het ${taalNaam}, ook de keuzes na [opties: …]. De prijsvraag-flow en de doorverwijzing naar Roos gelden ook als de bezoeker dezelfde wens in het ${taalNaam} uitspreekt (bijvoorbeeld een prijs of offerte willen, of subsidie willen aanvragen).` }] : []),
+        ],
         tools: [PRIJS_TOOL, PRODUCT_TOOL],
         messages: gesprek,
       });

@@ -1,0 +1,177 @@
+"use client";
+import { useRef, useState, useEffect } from "react";
+
+function linkjes(t: string, naarRoos: string) {
+  return t.split(/(https?:\/\/[^\s]+)/g).map((d, i) => {
+    if (!/^https?:\/\//.test(d)) return d;
+    const url = d.replace(/[.,)]+$/, "");
+    if (url.includes("uitchat=1"))
+      return <a key={i} href={url} target="_top" onClick={() => tel("chat_roos")} className="mt-2 flex items-center justify-center gap-2 rounded-full bg-[#1E5079] px-4 py-2 text-center text-sm font-bold text-white no-underline"><svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" /></svg>{naarRoos}</a>;
+    return <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="underline break-all">{d}</a>;
+  });
+}
+
+function tel(soort: string) {
+  try {
+    navigator.sendBeacon?.("/api/tel", new Blob([JSON.stringify({ soort })], { type: "text/plain" }));
+  } catch {}
+}
+
+/** Haalt de keuzeknoppen uit het antwoord: de laatste regel [opties: A | B | C]. */
+function splitsOpties(t0: string): { tekst: string; opties: string[] } {
+  const t = t0.replace(/\n?\[\[item:.*?\]\]/g, "").trim();
+  const m = t.match(/\n?\[opties:\s*([^\]]+)\]\s*$/);
+  if (!m) return { tekst: t, opties: [] };
+  return { tekst: t.slice(0, m.index).trim(), opties: m[1].split("|").map((o) => o.trim()).filter(Boolean) };
+}
+
+
+export type Taal = "nl" | "en" | "de" | "pl";
+
+const TEKST: Record<Taal, { titel: string; sub: string; sluiten: string; welkom: string; knoppen: [string, string]; denken: string; plek: string; micStop: string; micStart: string; stuur: string; fout: string; foutKort: string; naarRoos: string; startVraag: string; spraak: string }> = {
+  nl: { titel: "De slimme assistent", sub: "van BartMooi · Vraag maar raak", sluiten: "Sluiten", welkom: "Goedendag! Ik ben de slimme assistent van BartMooi. Vraag me gerust naar prijzen van kozijnen, deuren en rolluiken, naar glas, onderhoud of subsidie. Ik help u ook met de subsidieaanvraag. Waarmee kan ik u helpen?", knoppen: ["Ik wil een offerte in 2 minuten", "Ik wil subsidie aanvragen"], denken: "Even denken…", plek: "Typ uw vraag…", micStop: "Stop met luisteren", micStart: "Praat uw vraag in", stuur: "Stuur", fout: "Er ging iets mis.", foutKort: "Er ging iets mis. Probeer het zo nog eens.", naarRoos: "Naar Roos voor uw offerte", startVraag: "Ik wil mijn prijs uitrekenen", spraak: "nl-NL" },
+  en: { titel: "The smart assistant", sub: "from BartMooi · Just ask", sluiten: "Close", welkom: "Good day! I'm BartMooi's smart assistant. Feel free to ask me about prices for windows, doors and roller shutters, about glazing, maintenance or subsidies. I can also help you with the subsidy application. How can I help you?", knoppen: ["I'd like a quote in 2 minutes", "I'd like to apply for a subsidy"], denken: "Thinking…", plek: "Type your question…", micStop: "Stop listening", micStart: "Speak your question", stuur: "Send", fout: "Something went wrong.", foutKort: "Something went wrong. Please try again in a moment.", naarRoos: "To Roos for your quote", startVraag: "I'd like to calculate my price", spraak: "en-GB" },
+  de: { titel: "Der smarte Assistent", sub: "von BartMooi · Einfach fragen", sluiten: "Schließen", welkom: "Guten Tag! Ich bin der smarte Assistent von BartMooi. Fragen Sie mich gern nach Preisen für Fenster, Türen und Rollläden, nach Verglasung, Pflege oder Förderung. Beim Förderantrag helfe ich Ihnen ebenfalls. Wie kann ich Ihnen helfen?", knoppen: ["Ich möchte ein Angebot in 2 Minuten", "Ich möchte eine Förderung beantragen"], denken: "Einen Moment…", plek: "Geben Sie Ihre Frage ein…", micStop: "Zuhören beenden", micStart: "Frage einsprechen", stuur: "Senden", fout: "Etwas ist schiefgelaufen.", foutKort: "Etwas ist schiefgelaufen. Bitte versuchen Sie es gleich noch einmal.", naarRoos: "Zu Roos für Ihr Angebot", startVraag: "Ich möchte meinen Preis berechnen", spraak: "de-DE" },
+  pl: { titel: "Inteligentny asystent", sub: "BartMooi · Pytaj śmiało", sluiten: "Zamknij", welkom: "Dzień dobry! Jestem inteligentnym asystentem BartMooi. Proszę pytać o ceny okien, drzwi i rolet zewnętrznych, o szyby, konserwację lub dotacje. Pomogę też przy wniosku o dotację. W czym mogę pomóc?", knoppen: ["Chcę ofertę w 2 minuty", "Wniosek o dotację"], denken: "Chwileczkę…", plek: "Wpisz pytanie…", micStop: "Przestań słuchać", micStart: "Powiedz pytanie", stuur: "Wyślij", fout: "Coś poszło nie tak.", foutKort: "Coś poszło nie tak. Spróbuj za chwilę ponownie.", naarRoos: "Do Roos po ofertę", startVraag: "Chcę obliczyć cenę", spraak: "pl-PL" },
+};
+
+type Bericht = { rol: "klant" | "chat"; tekst: string };
+
+export default function Chat({ taal }: { taal: Taal }) {
+  const x = TEKST[taal];
+  const [berichten, setBerichten] = useState<Bericht[]>([{ rol: "chat", tekst: x.welkom }]);
+  const [invoer, setInvoer] = useState("");
+  const [bezig, setBezig] = useState(false);
+  const onder = useRef<HTMLDivElement>(null);
+  const [luistert, setLuistert] = useState(false);
+  const [kanSpraak, setKanSpraak] = useState(false);
+  const herkenner = useRef<any>(null);
+  useEffect(() => {
+    const w = window as any;
+    setKanSpraak(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
+
+  function spreek() {
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+    if (luistert) { herkenner.current?.stop(); return; }
+    const h = new SR();
+    h.lang = x.spraak;
+    h.interimResults = true;
+    h.continuous = false;
+    const voor = invoer ? invoer.trim() + " " : "";
+    h.onresult = (e: any) => setInvoer(voor + Array.from(e.results).map((r: any) => r[0].transcript).join(""));
+    h.onend = () => setLuistert(false);
+    h.onerror = () => setLuistert(false);
+    herkenner.current = h;
+    setLuistert(true);
+    h.start();
+  }
+  // De begroeting wordt letter voor letter getypt, als een echte assistent.
+  const [ingebed, setIngebed] = useState(false);
+  useEffect(() => { setIngebed(window.parent !== window); }, []);
+  const [getypt, setGetypt] = useState(0);
+  const welkom = berichten[0].tekst;
+  useEffect(() => {
+    if (getypt >= welkom.length) return;
+    const t = setTimeout(() => setGetypt((n) => Math.min(welkom.length, n + 2)), 28);
+    return () => clearTimeout(t);
+  }, [getypt, welkom]);
+  const klaarMetTypen = getypt >= welkom.length;
+  const lijst = useRef<HTMLDivElement>(null);
+  const laatste = useRef<HTMLDivElement>(null);
+  // Een nieuw antwoord begint bovenaan in beeld, zodat je het van het begin af leest; eigen vraag en "even denken" gaan naar onder.
+  useEffect(() => {
+    const c = lijst.current;
+    if (!c) return;
+    const l = berichten[berichten.length - 1];
+    if (berichten.length === 1) c.scrollTo({ top: 0 });
+    else if (!bezig && l?.rol === "chat" && berichten.length > 1 && laatste.current) c.scrollTo({ top: Math.max(0, laatste.current.offsetTop - 12), behavior: "smooth" });
+    else c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+  }, [berichten, bezig]);
+
+  // Komt de bezoeker via de knop "Prijs & advies direct" (?start=prijs), dan begint het prijsgesprek meteen.
+  const gestart = useRef(false);
+  useEffect(() => {
+    if (gestart.current) return;
+    try {
+      if (new URLSearchParams(window.location.search).get("start") !== "prijs") return;
+    } catch {
+      return;
+    }
+    gestart.current = true;
+    setGetypt(welkom.length);
+    setTimeout(() => void stuur(null, x.startVraag), 350);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function stuur(e: React.FormEvent | null, vraag?: string) {
+    e?.preventDefault();
+    const tekst = (vraag ?? invoer).trim();
+    if (!tekst || bezig) return;
+    if (!berichten.some((b) => b.rol === "klant")) tel("chat");
+    const nieuw = [...berichten, { rol: "klant" as const, tekst }];
+    setBerichten(nieuw);
+    setInvoer("");
+    setBezig(true);
+    try {
+      const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ berichten: nieuw, taal }) });
+      const d = await r.json();
+      setBerichten([...nieuw, { rol: "chat", tekst: d.tekst ?? d.fout ?? x.fout }]);
+    } catch {
+      setBerichten([...nieuw, { rol: "chat", tekst: x.foutKort }]);
+    }
+    setBezig(false);
+  }
+
+  return (
+    <div className="fixed inset-0 mx-auto flex flex-col bg-white sm:static sm:inset-auto sm:my-6 sm:max-w-sm sm:h-[min(560px,calc(100dvh-3rem))] sm:overflow-hidden sm:rounded-2xl sm:shadow-xl">
+      <div className="relative flex items-center gap-3 overflow-hidden bg-[#1E5079] px-4 py-3 text-white">
+        <style>{`@keyframes bmglans{0%{left:-60%}55%,100%{left:140%}}`}</style>
+        <span aria-hidden className="pointer-events-none absolute top-0 h-full w-[40%] -skew-x-[20deg] bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ left: "-60%", animation: "bmglans 3.2s ease-in-out infinite" }} />
+        <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#1E5079]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" /></svg>
+        </div>
+        <div className="relative z-10 min-w-0 flex-1">
+          <p className="text-[15px] font-bold uppercase leading-tight tracking-[0.12em]">{x.titel}</p>
+          <p className="mt-0.5 text-xs opacity-90">{x.sub}</p>
+        </div>
+        {ingebed && <button type="button" aria-label={x.sluiten} onClick={() => { try { window.parent.postMessage({ bmChat: "sluit" }, "*"); } catch {} }} className="relative z-10 ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/90 hover:bg-white/15">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>}
+      </div>
+      <div ref={lijst} className="relative flex-1 space-y-3 overflow-y-auto bg-[#f4f7fa] p-4">
+        {berichten.map((b, i) => (
+          <div key={i} ref={i === berichten.length - 1 ? laatste : undefined} className={`flex ${b.rol === "klant" ? "justify-end" : "justify-start"}`}>
+            <p className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-snug ${b.rol === "klant" ? "bg-[#dbe8f4] text-[#13334D]" : "bg-white text-[#13334D] shadow-sm"}`}>{i === 0 ? <>{linkjes(welkom.slice(0, getypt), x.naarRoos)}{!klaarMetTypen && <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-[#1E5079]" />}</> : linkjes(splitsOpties(b.tekst).tekst, x.naarRoos)}</p>
+          </div>
+        ))}
+        {klaarMetTypen && !berichten.some((b) => b.rol === "klant") && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {x.knoppen.map((v) => (
+              <button key={v} type="button" onClick={() => stuur(null, v)} className="rounded-full border border-[#1E5079]/40 bg-white px-3 py-1.5 text-sm font-semibold text-[#1E5079] hover:bg-[#1E5079] hover:text-white">{v}</button>
+            ))}
+          </div>
+        )}
+        {!bezig && berichten.length > 1 && berichten[berichten.length - 1].rol === "chat" && splitsOpties(berichten[berichten.length - 1].tekst).opties.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {splitsOpties(berichten[berichten.length - 1].tekst).opties.map((v) => (
+              <button key={v} type="button" onClick={() => stuur(null, v)} className="rounded-full border border-[#1E5079]/40 bg-white px-3.5 py-2 text-sm font-semibold text-[#1E5079] hover:bg-[#1E5079] hover:text-white">{v}</button>
+            ))}
+          </div>
+        )}
+        {bezig && <p className="text-sm text-black/40">{x.denken}</p>}
+        <div ref={onder} />
+      </div>
+      <form onSubmit={stuur} className="flex gap-2 bg-white p-3">
+        <input value={invoer} onChange={(e) => setInvoer(e.target.value)} placeholder={x.plek} className="min-w-0 flex-1 rounded-full border border-black/15 px-4 py-2.5 text-[15px] outline-none focus:border-[#1E5079]" />
+        {kanSpraak && (
+          <button type="button" onClick={spreek} aria-label={luistert ? x.micStop : x.micStart} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${luistert ? "animate-pulse border-red-500 bg-red-50 text-red-600" : "border-black/15 text-[#1E5079]"}`}>
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v4" /></svg>
+          </button>
+        )}
+        <button disabled={bezig || !invoer.trim()} className="rounded-full bg-[#1E5079] px-5 font-bold text-white disabled:opacity-40">{x.stuur}</button>
+      </form>
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Agenda, Facebook, Instagram, Klok, Mail, Telefoon } from "./Icons";
@@ -30,6 +31,10 @@ export function KopClient({ k }: { k: KopTeksten }) {
   const pathname = usePathname();
   const donker = k.donkerPaden.includes(pathname);
   const nl = nlAdres(pathname);
+  // Het mobiele menu sluit zodra je iets kiest of naar een andere pagina gaat.
+  const menu = useRef<HTMLDetailsElement>(null);
+  const sluit = () => menu.current?.removeAttribute("open");
+  useEffect(sluit, [pathname]);
   const wissel = ACTIEF.length > 1 ? ACTIEF.map((x) => ({ taal: x, href: nl ? pad(nl, x) : x === "nl" ? "/" : `/${x}/` })) : [];
   return (
     <header className="sticky top-0 z-50">
@@ -61,18 +66,18 @@ export function KopClient({ k }: { k: KopTeksten }) {
       <div className={`bg-white ${donker ? "md:bg-navy" : "md:bg-licht"}`}>
         <nav className="relative mx-auto flex h-[106px] max-w-[1140px] items-center justify-between px-4 md:h-[96px] md:justify-start md:px-0">
           <Lnk href={k.homeHref} aria-label="BartMooi"><Image src="/img/logo.png" alt="BartMooi" width={179} height={60} priority className="h-[69px] w-auto md:h-[60px]" /></Lnk>
-          <details className="md:hidden">
+          <details ref={menu} className="md:hidden">
             <summary aria-label={k.menuLabel} className="flex size-[45px] cursor-pointer list-none items-center justify-center bg-blauw/10 text-blauw [&::-webkit-details-marker]:hidden">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" /></svg>
             </summary>
-            <ul className="absolute inset-x-0 top-[106px] z-30 bg-white px-4 py-2 text-[17.6px] font-semibold shadow-lg">
-              {k.menu.map(([naam, href]) => (<li key={href}><Lnk href={href} className="block py-3 text-zwart">{naam}</Lnk></li>))}
-              <li><Lnk href={k.contactHref} className="mt-2 block bg-blauw/10 py-3 text-center text-[14px] font-bold uppercase tracking-[1.6px] text-blauw">{k.gratisMenu}</Lnk></li>
+            <ul onClick={(e) => { if ((e.target as HTMLElement).closest("a")) sluit(); }} className="absolute inset-x-0 top-[106px] z-30 bg-white px-4 py-2 text-[17.6px] font-semibold shadow-lg">
               {wissel.length > 0 && (
-                <li className="flex justify-center gap-6 py-3 text-[14px] font-bold uppercase tracking-[1.6px]">
+                <li className="flex justify-center gap-6 border-b border-zwart/10 py-3 text-[14px] font-bold uppercase tracking-[1.6px]">
                   {wissel.map((w) => (<Lnk key={w.taal} href={w.href} hrefLang={w.taal} aria-label={k.taalNamen[w.taal]} aria-current={w.taal === k.taal ? "true" : undefined} className={w.taal === k.taal ? "text-blauw" : "text-zwart/60"}>{w.taal}</Lnk>))}
                 </li>
               )}
+              {k.menu.map(([naam, href]) => (<li key={href}><Lnk href={href} className="block py-3 text-zwart">{naam}</Lnk></li>))}
+              <li><Lnk href={k.contactHref} className="mt-2 block bg-blauw/10 py-3 text-center text-[14px] font-bold uppercase tracking-[1.6px] text-blauw">{k.gratisMenu}</Lnk></li>
             </ul>
           </details>
           <ul className={`ml-[42px] hidden gap-10 text-[17.6px] font-semibold leading-[22.88px] text-zwart ${donker ? "md:text-white" : ""} md:flex`}>

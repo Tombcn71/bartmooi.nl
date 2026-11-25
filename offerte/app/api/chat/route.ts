@@ -153,6 +153,13 @@ export async function POST(req: Request) {
     tekst = tekst.replace(/\[Tool call:[^\]]*\]/gi, "").replace(/\[\[item:.*?\]\]/g, "").trim();
     // Verborgen merktekens (worden in de chat niet getoond) zodat een volgende beurt weet wat er is uitgerekend.
     const nieuw = nieuweItems.filter((i, x) => nieuweItems.findIndex((j) => JSON.stringify(j) === JSON.stringify(i)) === x);
+    // Vaste vragen en keuzeknoppen altijd in de taal van de bezoeker, ook als het model ze in het Nederlands overneemt.
+    if (woordenlijst) {
+      const paren = woordenlijst.split(/;\s*|,\s*(?=[^,=]+=)/).map((x) => x.split("=").map((y) => y.trim())).filter((x) => x.length === 2 && x[0] && x[1]).sort((a, b) => b[0].length - a[0].length);
+      const vertaal = (o: string) => paren.find(([nl]) => nl.toLowerCase() === o.trim().toLowerCase())?.[1] ?? o.trim();
+      tekst = tekst.replace(/\[opties:\s*([^\]]+)\]/g, (_, l: string) => `[opties: ${l.split("|").map(vertaal).join(" | ")}]`);
+      for (const [nl, ander] of paren) if (/\s/.test(nl)) tekst = tekst.split(nl).join(ander);
+    }
     if (nieuw.length) tekst = `${tekst}\n${nieuw.map((i) => `[[item:${JSON.stringify(i)}]]`).join("")}`;
     return Response.json({ tekst: tekst || "Daar kan ik u zo niet mee helpen. Mail gerust naar info@bartmooi.nl." });
   } catch (e) {

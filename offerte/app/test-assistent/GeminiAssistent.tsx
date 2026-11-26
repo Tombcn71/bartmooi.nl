@@ -11,6 +11,14 @@ import { VULLERS } from "@/lib/roos-vullers";
 import { ROOS_PRODUCTEN } from "@/lib/roos-producten";
 import { useTaal } from "@/app/components/TaalContext";
 
+/** De zin waarop de foto in beeld komt ("Kijk, zo ziet het eruit."), per taal. */
+const FOTO_ZIN: Record<string, string> = { en: "Look, this is how it looks.", de: "Schauen Sie, so sieht es aus.", pl: "Proszę spojrzeć, tak to wygląda." };
+/** Plek in de tekst waar Roos die zin zegt (in elke taal, ook met een woord ertussen), of -1. */
+function fotoZin(tekst: string): number {
+  const m = /zo ziet het( \S+){0,3} eruit|(this|that|here)('s| is) how it( \S+){0,3} looks|so sieht (es|das)( \S+){0,3} aus|tak (to )?wygląda|oto jak wygląda/.exec(tekst);
+  return m ? m.index : -1;
+}
+
 /** Begroeting van Roos in de taal van de klant (de stem volgt de taal van de openingszin). */
 const GROET: Record<string, [string, string, string]> = {
   en: ["Good morning", "Good afternoon", "Good evening"],
@@ -540,7 +548,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         onMessage: ({ message, source }: { message: string; source: "user" | "ai" }) => {
           // Bezoeker uit de chat: zodra Roos "zo ziet het eruit" zegt, gaat de foto in beeld. De app doet dat zelf, Roos hoeft er niets voor aan te roepen.
           if (vanChat && source === "ai") {
-            const plek = message.toLowerCase().indexOf("zo ziet het eruit");
+            const plek = fotoZin(message.toLowerCase());
             if (plek >= 0 && !fotoPlan.klaar) {
               // De tekst komt binnen voordat Roos het zegt. Zonder tijdsinformatie van de stem schatten we wanneer het woord klinkt (ongeveer 13 tekens per seconde, vanaf het begin van haar zin).
               fotoPlan.klaar = true;
@@ -554,7 +562,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         onAudioAlignmentPlayback: ({ alignment }: { alignment: { chars?: string[]; char_start_times_ms?: number[] } }) => {
           if (!vanChat) return;
           const tekst = (alignment.chars ?? []).join("").toLowerCase();
-          const i = tekst.indexOf("zo ziet het eruit");
+          const i = fotoZin(tekst);
           if (i < 0) return;
           // Het geluid met die zin gaat nu spelen: de schatting vervalt en de foto komt op het exacte moment.
           if (fotoPlan.timer) clearTimeout(fotoPlan.timer);
@@ -578,7 +586,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         conv.endSession().catch(() => {});
         return;
       }
-      if (taalNaam) conv.sendContextualUpdate(`De klant spreekt ${taalNaam}. Voer het hele gesprek uitsluitend in het ${taalNaam}, ook na elke functie of tool. Spreek nooit Nederlands, ook al zijn je instructies en de toolresultaten in het Nederlands.`);
+      if (taalNaam) conv.sendContextualUpdate(`De klant spreekt ${taalNaam}. Voer het hele gesprek uitsluitend in het ${taalNaam}, ook na elke functie of tool. Spreek nooit Nederlands, ook al zijn je instructies en de toolresultaten in het Nederlands. Waar je instructies "Kijk, zo ziet het eruit." zeggen, zeg je precies: "${FOTO_ZIN[taal]}"`);
       if (vanChat) conv.sendContextualUpdate(vanChat);
       if (modusTypen) conv.setVolume({ volume: 0 });
       // Kleine vertaler: de rest van de code (tekst sturen, ophangen) blijft gewoon werken.

@@ -9,6 +9,24 @@ import { formulier } from "@/lib/assistent-formulier";
 import { KOZIJN_TYPEN } from "@/lib/kozijntypen";
 import { VULLERS } from "@/lib/roos-vullers";
 import { ROOS_PRODUCTEN } from "@/lib/roos-producten";
+import { useTaal } from "@/app/components/TaalContext";
+
+/** Begroeting van Roos in de taal van de klant (de stem volgt de taal van de openingszin). */
+const GROET: Record<string, [string, string, string]> = {
+  en: ["Good morning", "Good afternoon", "Good evening"],
+  de: ["Guten Morgen", "Guten Tag", "Guten Abend"],
+  pl: ["Dzień dobry", "Dzień dobry", "Dobry wieczór"],
+};
+const WELKOM: Record<string, string> = {
+  en: "welcome to BartMooi. How can I help you?",
+  de: "willkommen bei BartMooi. Wie kann ich Ihnen helfen?",
+  pl: "witamy w BartMooi. W czym mogę pomóc?",
+};
+const UIT_CHAT: Record<string, string> = {
+  en: "Hello, I'm Roos, I'll help you with your quote. You'd like a free price quote for this, is that right?",
+  de: "Hallo, ich bin Roos und helfe Ihnen mit Ihrem Angebot weiter. Sie möchten hierfür ein unverbindliches Preisangebot, stimmt das?",
+  pl: "Dzień dobry, jestem Roos i pomogę Ci z ofertą. Chcesz bezpłatnej wyceny tego produktu, zgadza się?",
+};
 import { Maximize2, Mic, Minimize2, PhoneOff, Send, Sparkles, X } from "lucide-react";
 
 const MAX_SECONDEN = 15 * 60; // een gesprek stopt hoe dan ook na een kwartier
@@ -68,6 +86,7 @@ function naarBase64(buf: ArrayBuffer) {
 type Stand = "uit" | "verbinden" | "aan";
 
 function Chat({ ingebed = false }: { ingebed?: boolean }) {
+  const taal = useTaal();
   const [open, setOpen] = useState(ingebed);
   const [uitgeklapt, setUitgeklapt] = useState(false);
   const [klein, setKlein] = useState(false);
@@ -466,7 +485,9 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
       if (afgebroken()) return;
       if (!d.signedUrl) throw new Error(d.fout || "Geen toegang");
       const uur = Number(new Intl.DateTimeFormat("nl-NL", { hour: "numeric", hour12: false, timeZone: "Europe/Amsterdam" }).format(new Date()));
-      const groet = uur < 6 ? "Goedenavond" : uur < 12 ? "Goedemorgen" : uur < 18 ? "Goedemiddag" : "Goedenavond";
+      const groetNl = uur < 6 ? "Goedenavond" : uur < 12 ? "Goedemorgen" : uur < 18 ? "Goedemiddag" : "Goedenavond";
+      const g = GROET[taal];
+      const groet = g ? (uur < 6 ? g[2] : uur < 12 ? g[0] : uur < 18 ? g[1] : g[2]) : groetNl;
       const NAMEN = ["ga_naar_product", "open_product", "open_kozijn", "zet_keuzes", "voeg_product_toe", "open_formulier", "vul_formulier", "lees_formulier", "verstuur_formulier", "lees_offerte", "ga_naar_akkoord"];
       const clientTools = Object.fromEntries(
         NAMEN.map((naam) => [
@@ -493,7 +514,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
           const kleurTekst = q.get("kleur") ? `, kleur buiten ${q.get("kleur")!.replace(/-/g, " ")}` : "";
           const meer = (q.get("meer") ?? "").slice(0, 200);
           const wat = `${q.get("n") ?? "1"} × ${naam}, ${q.get("b")} bij ${q.get("h")} mm${glasTekst}${kleurTekst}`;
-          vanChatOpening = `Hallo, ik ben Roos, ik help je verder met je offerte. Hier wil je een vrijblijvende prijsopgave voor${meer ? " (en nog meer)" : ""}, klopt dat?`;
+          vanChatOpening = UIT_CHAT[taal] ?? `Hallo, ik ben Roos, ik help je verder met je offerte. Hier wil je een vrijblijvende prijsopgave voor${meer ? " (en nog meer)" : ""}, klopt dat?`;
           return `De klant komt uit de chat. Je begroeting en de vraag "klopt dat?" zijn al gesteld. Dit wil de klant laten uitrekenen: ${wat}.${meer ? ` Daarnaast wil hij: ${meer}.` : ""} Het eerste product staat al ingevuld in de calculator, met de prijs. Wacht op zijn antwoord.`;
         } catch {
           return "";
@@ -502,7 +523,9 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
       const conv = await Conversation.startSession({
         signedUrl: d.signedUrl,
         connectionType: "websocket",
-        dynamicVariables: { groet, opening: vanChatOpening || `${groet}, welkom bij BartMooi. Waarmee kan ik u helpen?` },
+        dynamicVariables: { groet, opening: vanChatOpening || `${groet}, ${WELKOM[taal] ?? "welkom bij BartMooi. Waarmee kan ik u helpen?"}` },
+        // Andere taal dan Nederlands: Roos luistert en praat in die taal (in ElevenLabs moet de taal-override aan staan).
+        ...(taal !== "nl" ? { overrides: { agent: { language: taal } } } : {}),
         clientTools,
         onMessage: ({ message, source }: { message: string; source: "user" | "ai" }) => {
           // Bezoeker uit de chat: zodra Roos "zo ziet het eruit" zegt, gaat de foto in beeld. De app doet dat zelf, Roos hoeft er niets voor aan te roepen.

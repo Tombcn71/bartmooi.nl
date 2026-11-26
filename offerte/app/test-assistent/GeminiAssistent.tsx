@@ -10,6 +10,7 @@ import { KOZIJN_TYPEN } from "@/lib/kozijntypen";
 import { VULLERS } from "@/lib/roos-vullers";
 import { ROOS_PRODUCTEN } from "@/lib/roos-producten";
 import { useTaal } from "@/app/components/TaalContext";
+import { vertaal } from "@/lib/taal";
 
 /** De zin waarop de foto in beeld komt ("Kijk, zo ziet het eruit."), per taal. */
 const FOTO_ZIN: Record<string, string> = { en: "Look, this is how it looks.", de: "Schauen Sie, so sieht es aus.", pl: "Proszę spojrzeć, tak to wygląda." };
@@ -531,7 +532,8 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
           const glasTekst = q.get("glas") ? `, ${q.get("glas") === "triple" ? "triple glas" : "dubbel glas (HR++)"}` : "";
           const kleurTekst = q.get("kleur") ? `, kleur buiten ${q.get("kleur")!.replace(/-/g, " ")}` : "";
           const meer = (q.get("meer") ?? "").slice(0, 200);
-          const wat = `${q.get("n") ?? "1"} × ${naam}, ${q.get("b")} bij ${q.get("h")} mm${glasTekst}${kleurTekst}`;
+          // De productnaam in de taal van de klant, zodat Roos hem niet in het Nederlands uitspreekt.
+          const wat = `${q.get("n") ?? "1"} × ${vertaal(taal, naam)}${taal !== "nl" ? ` (Nederlands: ${naam})` : ""}, ${q.get("b")} bij ${q.get("h")} mm${glasTekst}${kleurTekst}`;
           vanChatOpening = UIT_CHAT[taal] ?? `Hallo, ik ben Roos, ik help je verder met je offerte. Hier wil je een vrijblijvende prijsopgave voor${meer ? " (en nog meer)" : ""}, klopt dat?`;
           return `De klant komt uit de chat. Je begroeting en de vraag "klopt dat?" zijn al gesteld. Dit wil de klant laten uitrekenen: ${wat}.${meer ? ` Daarnaast wil hij: ${meer}.` : ""} Het eerste product staat al ingevuld in de calculator, met de prijs. Wacht op zijn antwoord.`;
         } catch {

@@ -488,6 +488,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
       const groetNl = uur < 6 ? "Goedenavond" : uur < 12 ? "Goedemorgen" : uur < 18 ? "Goedemiddag" : "Goedenavond";
       const g = GROET[taal];
       const groet = g ? (uur < 6 ? g[2] : uur < 12 ? g[0] : uur < 18 ? g[1] : g[2]) : groetNl;
+      const taalNaam = ({ en: "Engels", de: "Duits", pl: "Pools" } as Record<string, string>)[taal] ?? "";
       const NAMEN = ["ga_naar_product", "open_product", "open_kozijn", "zet_keuzes", "voeg_product_toe", "open_formulier", "vul_formulier", "lees_formulier", "verstuur_formulier", "lees_offerte", "ga_naar_akkoord"];
       const clientTools = Object.fromEntries(
         NAMEN.map((naam) => [
@@ -497,7 +498,8 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
             if (p.soort !== undefined && p.type === undefined) p.type = p.soort; // bij ElevenLabs heet "type" hier "soort"
             const uit = await voerUit(naam, p);
             if (process.env.NODE_ENV !== "production") console.info("Roos actie:", naam, JSON.stringify(p), "=>", JSON.stringify(uit).slice(0, 300));
-            return JSON.stringify(uit);
+            // Na elke actie: herinner Roos aan de taal van de klant, anders valt ze terug op Nederlands.
+            return JSON.stringify(uit) + (taalNaam ? `\n\nBELANGRIJK: antwoord de klant uitsluitend in het ${taalNaam}, nooit in het Nederlands. Vertaal Nederlandse namen uit dit resultaat.` : "");
           },
         ]),
       );
@@ -567,6 +569,7 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         conv.endSession().catch(() => {});
         return;
       }
+      if (taalNaam) conv.sendContextualUpdate(`De klant spreekt ${taalNaam}. Voer het hele gesprek uitsluitend in het ${taalNaam}, ook na elke functie of tool. Spreek nooit Nederlands, ook al zijn je instructies en de toolresultaten in het Nederlands.`);
       if (vanChat) conv.sendContextualUpdate(vanChat);
       if (modusTypen) conv.setVolume({ volume: 0 });
       // Kleine vertaler: de rest van de code (tekst sturen, ophangen) blijft gewoon werken.

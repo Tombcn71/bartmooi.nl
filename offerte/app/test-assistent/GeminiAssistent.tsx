@@ -87,6 +87,8 @@ type Stand = "uit" | "verbinden" | "aan";
 
 function Chat({ ingebed = false }: { ingebed?: boolean }) {
   const taal = useTaal();
+  const taalRef = useRef(taal);
+  taalRef.current = taal;
   const [open, setOpen] = useState(ingebed);
   const [uitgeklapt, setUitgeklapt] = useState(false);
   const [klein, setKlein] = useState(false);
@@ -202,7 +204,13 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         const w = formulier.waarden;
         if (!sessie.current) return;
         if (veld === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(w.email)) return; // pas melden als het adres compleet is
-        sessie.current.sendRealtimeInput({ text: veld === "email" ? "Ik heb mijn e-mailadres ingetypt." : "Ik heb het in het formulier aangepast." });
+        const ZIN: Record<string, [string, string]> = {
+          en: ["I have typed in my email address.", "I have changed it in the form."],
+          de: ["Ich habe meine E-Mail-Adresse eingegeben.", "Ich habe es im Formular geändert."],
+          pl: ["Wpisałem(-am) swój adres e-mail.", "Zmieniłem(-am) to w formularzu."],
+        };
+        const z = ZIN[taalRef.current] ?? ["Ik heb mijn e-mailadres ingetypt.", "Ik heb het in het formulier aangepast."];
+        sessie.current.sendRealtimeInput({ text: veld === "email" ? z[0] : z[1] });
       }, 1800);
     };
     window.addEventListener("roos-formulier-getikt", bijTik);

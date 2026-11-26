@@ -526,7 +526,8 @@ function Chat({ ingebed = false }: { ingebed?: boolean }) {
         signedUrl: d.signedUrl,
         connectionType: "websocket",
         dynamicVariables: { groet, opening: vanChatOpening || `${groet}, ${WELKOM[taal] ?? "welkom bij BartMooi. Waarmee kan ik u helpen?"}` },
-        // De taal volgt uit de openingszin: de prompt in ElevenLabs zegt dat Roos in die taal blijft.
+        // Andere taal dan Nederlands: Roos luistert en praat in die taal (de taal-override staat aan in ElevenLabs).
+        ...(taal !== "nl" ? { overrides: { agent: { language: taal } } } : {}),
         clientTools,
         onMessage: ({ message, source }: { message: string; source: "user" | "ai" }) => {
           // Bezoeker uit de chat: zodra Roos "zo ziet het eruit" zegt, gaat de foto in beeld. De app doet dat zelf, Roos hoeft er niets voor aan te roepen.

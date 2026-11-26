@@ -4,6 +4,7 @@ import Link from "next/link";
 import { KozijnTechnisch, TECHNISCH } from "@/app/components/KozijnTechnisch";
 import { beginmaat } from "@/lib/beginmaten";
 import { useBron } from "@/lib/use-bron";
+import { useT } from "@/app/components/TaalContext";
 import { Wrench, ShieldCheck, Zap, Sparkles } from "lucide-react";
 
 // 🛠️ Alle benodigde SVG componenten centraal importeren uit je lib:
@@ -40,6 +41,7 @@ const COLORS = {
 export default function KozijnConfigurator() {
   // Offerte maken (Bart zelf) op een telefoon: kleinere kop, twee kaarten naast elkaar en lagere kaarten.
   const compact = useBron() === "onspot";
+  const t = useT();
   const [activeTab, setActiveTab] = useState(2); // opent op 2 vakken, met het draai-kiepraam 1/3 - vast 2/3 als eerste
 
   const kozijnen = [
@@ -376,10 +378,10 @@ export default function KozijnConfigurator() {
     <div className={`max-w-[1200px] mx-auto ${compact ? "p-3" : "p-4"} sm:p-8 md:p-16 font-sans bg-white min-h-screen`}>
       <div className={`${compact ? "mb-3" : "mb-6"} md:mb-12 border-l-4 border-brand pl-4 md:pl-6`}>
         <h1 className={`${compact ? "text-xl mb-1" : "text-2xl mb-2"} md:text-4xl font-bold text-[#1a1a1a] md:mb-3 tracking-tight`}>
-          Kunststof kozijnen
+          {t("Kunststof kozijnen")}
         </h1>
         <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">
-          Kies je gewenste indeling{" "}
+          {t("Kies je gewenste indeling")}
         </p>
       </div>
 
@@ -390,7 +392,7 @@ export default function KozijnConfigurator() {
               key={n}
               onClick={() => setActiveTab(n)}
               className={`px-3 py-1.5 text-xs md:px-8 md:py-3 md:text-sm font-semibold md:font-bold rounded-md md:rounded-lg transition-colors ${activeTab === n ? "bg-brand text-white shadow-md" : "text-[#666666] hover:text-brand-text"}`}>
-              {n} {n === 1 ? "vak" : "vakken"}
+              {n} {n === 1 ? t("vak") : t("vakken")}
             </button>
           ))}
         </div>
@@ -407,7 +409,7 @@ export default function KozijnConfigurator() {
               <div className={`relative ${compact ? "h-[130px] p-2" : "h-[210px]"} md:h-[280px] ${TECHNISCH[item.slug] ? "bg-slate-50" : "bg-white"} border border-slate-100 rounded-2xl flex items-center justify-center p-5 md:p-8 shadow-sm`}>
                 {item.best && (
                   <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-brand text-white text-[8px] md:text-[9px] font-bold md:font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full tracking-widest z-10 uppercase">
-                    POPULAIR
+                    {t("POPULAIR")}
                   </div>
                 )}
                 <div className="w-full h-full flex items-center justify-center">
@@ -453,10 +455,10 @@ export default function KozijnConfigurator() {
                 </div>
               </div>
               <h3 className={`${compact ? "mt-2 text-xs" : "mt-6 text-base"} md:mt-6 md:text-base text-center font-bold text-[#1a1a1a] group-hover:text-brand-text transition-colors uppercase tracking-tight`}>
-                {item.name}
+                {t(item.name)}
               </h3>
               <div className="mt-2 text-center text-[10px] font-bold text-brand-text opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">
-                Bekijk configurator →
+                {t("Bekijk configurator")} →
               </div>
             </Link>
           ))}

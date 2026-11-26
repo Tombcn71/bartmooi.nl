@@ -14,6 +14,7 @@ import {
   GlassDkVastDkBovenlichtenVast, GlassVastDkVastBovenlichtenVast,
 } from "@/lib/kozijn-svgs";
 
+import { useT } from "@/app/components/TaalContext";
 const kozijnen = [
   { id: 1,  v: 1, slug: "vast-kozijn",                            name: "Vast kozijn",                              best: true,  components: [<GlassVast key="1" x={0} />] },
   { id: 2,  v: 1, slug: "draai-kiep-kozijn",                      name: "Draai kiep kozijn",                        best: true,  components: [<GlassDK key="1" x={0} />] },
@@ -45,13 +46,14 @@ const kozijnen = [
 const COLORS = { primary: "#1E5079", textDark: "#2d3748" };
 
 export default function AluKozijnenOverzicht() {
+  const t = useT();
   const [activeTab, setActiveTab] = useState(1);
 
   return (
     <div className="max-w-[1200px] mx-auto p-4 sm:p-8 md:p-16 font-sans bg-white min-h-screen">
       <div className="mb-6 md:mb-12 border-l-4 border-brand pl-4 md:pl-6">
-        <h1 className="text-2xl md:text-4xl font-bold text-[#1a1a1a] mb-2 md:mb-3 tracking-tight">Aluminium kozijnen</h1>
-        <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">Kies je gewenste indeling</p>
+        <h1 className="text-2xl md:text-4xl font-bold text-[#1a1a1a] mb-2 md:mb-3 tracking-tight">{t("Aluminium kozijnen")}</h1>
+        <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">{t("Kies je gewenste indeling")}</p>
       </div>
 
       <div className="flex justify-start mb-6 md:mb-12">
@@ -73,7 +75,7 @@ export default function AluKozijnenOverzicht() {
             <div className={`relative h-[210px] md:h-[280px] ${TECHNISCH[item.slug] ? "bg-slate-50" : "bg-white"} border border-slate-100 rounded-2xl flex items-center justify-center p-5 md:p-8 shadow-sm`}>
               {item.best && (
                 <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-brand text-white text-[8px] md:text-[9px] font-bold md:font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full tracking-widest z-10 uppercase">
-                  POPULAIR
+                  {t("POPULAIR")}
                 </div>
               )}
               <div className="w-full h-full flex items-center justify-center">
@@ -100,10 +102,10 @@ export default function AluKozijnenOverzicht() {
               </div>
             </div>
             <h3 className="mt-6 text-center font-bold text-[#1a1a1a] text-base group-hover:text-brand-text transition-colors uppercase tracking-tight">
-              {item.name}
+              {t(item.name)}
             </h3>
             <div className="mt-2 text-center text-[10px] font-bold text-brand-text opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">
-              Bekijk configurator →
+              {t("Bekijk configurator")} →
             </div>
           </Link>
         ))}

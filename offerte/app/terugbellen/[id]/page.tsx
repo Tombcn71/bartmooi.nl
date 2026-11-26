@@ -4,11 +4,13 @@ import { useParams } from "next/navigation";
 import { Check, Phone } from "lucide-react";
 import { BEDRIJF } from "@/lib/bedrijf";
 
+import { useT } from "@/app/components/TaalContext";
 const WANNEER = ["Zo snel mogelijk", "Vandaag", "Morgen"] as const;
 const DAGDEEL = ["ochtend", "middag", "avond"] as const;
 
 /** De klant vraagt om teruggebeld te worden (vanuit de herinneringsmail). Kort en rustig, in de huisstijl van het bedrijf. */
 export default function TerugbellenPagina() {
+  const t = useT();
   const { id } = useParams();
   const offerteId = typeof id === "string" ? id : "";
   const bedrijf = { naam: "BartMooi", telefoon: BEDRIJF.telefoon };
@@ -41,35 +43,35 @@ export default function TerugbellenPagina() {
             <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-brand text-white">
               <Check className="size-6" />
             </span>
-            <h1 className="text-xl font-bold text-slate-900">Bedankt, we bellen u terug</h1>
-            <p className="mt-2 text-slate-600">{bedrijf.naam} neemt contact met u op.</p>
+            <h1 className="text-xl font-bold text-slate-900">{t("Bedankt, we bellen u terug")}</h1>
+            <p className="mt-2 text-slate-600">{t("{naam} neemt contact met u op.", { naam: bedrijf.naam })}</p>
             {bedrijf.telefoon && (
               <a href={`tel:${bedrijf.telefoon.replace(/[^\d+]/g, "")}`} className="mt-5 inline-flex items-center gap-2 font-semibold text-brand-text">
-                <Phone className="size-4" /> Liever nu bellen? {bedrijf.telefoon}
+                <Phone className="size-4" /> {t("Liever nu bellen?")} {bedrijf.telefoon}
               </a>
             )}
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-bold text-slate-900">Wilt u dat {bedrijf.naam} u terugbelt?</h1>
-            <p className="mt-2 text-sm text-slate-600">Over uw offerte. Kies wanneer het u uitkomt.</p>
+            <h1 className="text-xl font-bold text-slate-900">{t("Wilt u dat {naam} u terugbelt?", { naam: bedrijf.naam })}</h1>
+            <p className="mt-2 text-sm text-slate-600">{t("Over uw offerte. Kies wanneer het u uitkomt.")}</p>
 
-            <p className="mt-6 mb-2 text-xs font-bold text-slate-800 uppercase">Wanneer</p>
+            <p className="mt-6 mb-2 text-xs font-bold text-slate-800 uppercase">{t("Wanneer")}</p>
             <div className="flex flex-wrap gap-2">
               {WANNEER.map((w) => (
                 <button key={w} type="button" aria-pressed={wanneer === w} onClick={() => setWanneer(w)} className={chip(wanneer === w)}>
-                  {w}
+                  {t(w)}
                 </button>
               ))}
             </div>
 
             {wanneer !== "Zo snel mogelijk" && (
               <>
-                <p className="mt-5 mb-2 text-xs font-bold text-slate-800 uppercase">Dagdeel</p>
+                <p className="mt-5 mb-2 text-xs font-bold text-slate-800 uppercase">{t("Dagdeel")}</p>
                 <div className="flex flex-wrap gap-2">
                   {DAGDEEL.map((d) => (
                     <button key={d} type="button" aria-pressed={dagdeel === d} onClick={() => setDagdeel(dagdeel === d ? "" : d)} className={chip(dagdeel === d)}>
-                      {d}
+                      {t(d)}
                     </button>
                   ))}
                 </div>
@@ -81,9 +83,9 @@ export default function TerugbellenPagina() {
               onClick={verstuur}
               disabled={status === "bezig"}
               className="mt-7 w-full rounded-full bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark disabled:opacity-60">
-              {status === "bezig" ? "Versturen…" : "Bel mij terug"}
+              {status === "bezig" ? t("Versturen…") : t("Bel mij terug")}
             </button>
-            {status === "fout" && <p className="mt-3 text-center text-sm text-red-600">Het lukte niet. Probeer het zo nog eens.</p>}
+            {status === "fout" && <p className="mt-3 text-center text-sm text-red-600">{t("Het lukte niet. Probeer het zo nog eens.")}</p>}
           </>
         )}
       </div>

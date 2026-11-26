@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CartButton } from "./CartButton";
 import { useBron } from "@/lib/use-bron";
+import { useT } from "@/app/components/TaalContext";
 
 const NAV_ITEMS = [
   {
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
 ];
 
 function DropdownItem({ label, items }: { label: string; items: { label: string; href: string }[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -67,7 +69,7 @@ function DropdownItem({ label, items }: { label: string; items: { label: string;
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1 hover:text-brand-text transition-colors">
-        {label}
+        {t(label)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d={open ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
         </svg>
@@ -81,7 +83,7 @@ function DropdownItem({ label, items }: { label: string; items: { label: string;
               href={item.href}
               onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-text transition-colors">
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </div>
@@ -92,6 +94,7 @@ function DropdownItem({ label, items }: { label: string; items: { label: string;
 
 const Navbar = () => {
   const bron = useBron();
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [openMobile, setOpenMobile] = useState<string | null>(null);
   const [isOfferte, setIsOfferte] = useState(false);
@@ -142,7 +145,7 @@ const Navbar = () => {
                 <button
                   onClick={() => setOpenMobile(openMobile === item.label ? null : item.label)}
                   className="w-full flex justify-between items-center py-3 hover:text-brand-text transition-colors">
-                  {item.label}
+                  {t(item.label)}
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d={openMobile === item.label ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
                   </svg>
@@ -155,7 +158,7 @@ const Navbar = () => {
                         href={sub.href}
                         onClick={() => { setIsOpen(false); setOpenMobile(null); }}
                         className="py-2 text-sm font-medium text-slate-500 hover:text-brand-text normal-case">
-                        {sub.label}
+                        {t(sub.label)}
                       </Link>
                     ))}
                   </div>

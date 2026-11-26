@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/app/components/TaalContext";
 
 interface Props {
   label: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function FormField({ label, value, children, defaultOpen = false }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(defaultOpen);
   const vak = useRef<HTMLDivElement>(null);
   // De assistent kan dit vak openklappen en in beeld brengen, zodat de klant ziet wat er verandert.
@@ -28,7 +30,7 @@ export function FormField({ label, value, children, defaultOpen = false }: Props
     <div ref={vak} className="border-b border-slate-200 last:border-0">
       <button type="button" onClick={() => setOpen(v => !v)}
         className="w-full flex justify-between items-center py-3 gap-3 text-left">
-        <span className="text-sm font-bold text-slate-900 flex-shrink-0">{label}</span>
+        <span className="text-sm font-bold text-slate-900 flex-shrink-0">{t(label)}</span>
         <div className="flex items-center gap-2 min-w-0">
           {!open && value && (
             <span className="text-sm font-medium text-slate-700 truncate max-w-[160px]">{value}</span>

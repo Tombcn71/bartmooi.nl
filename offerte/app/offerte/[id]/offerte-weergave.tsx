@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Mail, FileText } from "lucide-react";
 import { TekeningFoto } from "@/app/components/TekeningFoto";
+import { useT, useTaal } from "@/app/components/TaalContext";
+import { LOCALE, type Taal } from "@/lib/taal";
 
 export type OfferteItemWeergave = {
   product: string;
@@ -17,37 +19,41 @@ export type OfferteItemWeergave = {
   staand: boolean;
 };
 
-const euro = (n: number) => `€ ${n.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const maakEuro = (taal: Taal) => (n: number) => `€ ${n.toLocaleString(LOCALE[taal], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** Productnaam als "Kunststof schuifpui · Schuifpui 2-vaks": elk deel apart vertalen. */
+const naamIn = (t: (s: string) => string, naam: string) => naam.split(" · ").map((d) => t(d)).join(" · ");
 
 function ItemKaart({ item, nummer, totaalItems }: { item: OfferteItemWeergave; nummer: number; totaalItems: number }) {
+  const t = useT();
+  const euro = maakEuro(useTaal());
   return (
     <section data-roos-product={item.product} data-roos-prijs={item.prijs} data-roos-btw={item.btw} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-5 pt-5 pb-3">
         <p className="text-sm font-bold uppercase tracking-wider text-slate-700">
-          {totaalItems > 1 ? `Product ${nummer} van ${totaalItems}` : "Uw product"}
+          {totaalItems > 1 ? t("Product {n} van {m}", { n: nummer, m: totaalItems }) : t("Uw product")}
         </p>
-        <h2 className="text-lg font-bold text-slate-900 mt-1">{item.product}</h2>
+        <h2 className="text-lg font-bold text-slate-900 mt-1">{naamIn(t, item.product)}</h2>
       </div>
 
       <div className="md:grid md:grid-cols-2 md:items-start">
       {(item.svg || item.foto) && (
         <div className="px-5 pb-4">
-          <TekeningFoto naam={item.product} svg={item.svg} foto={item.foto} staand={item.staand} />
-          <p className="text-sm text-slate-700 mt-2">Schematische weergave — niet op schaal</p>
+          <TekeningFoto naam={naamIn(t, item.product)} svg={item.svg} foto={item.foto} staand={item.staand} />
+          <p className="text-sm text-slate-700 mt-2">{t("Schematische weergave — niet op schaal")}</p>
         </div>
       )}
 
       <dl className="border-t border-slate-100 md:border-t-0 md:border-l">
         {item.specs.map(([label, waarde], i) => (
           <div key={i} className={`flex gap-3 px-5 py-2.5 text-base ${i % 2 ? "bg-slate-50/60" : ""}`}>
-            <dt className="w-2/5 shrink-0 text-slate-800">{label}</dt>
-            <dd className="font-medium text-slate-800">{waarde}</dd>
+            <dt className="w-2/5 shrink-0 text-slate-800">{t(label)}</dt>
+            <dd className="font-medium text-slate-800">{t(waarde)}</dd>
           </div>
         ))}
         <div className="flex gap-3 px-5 py-3 text-base bg-slate-50 border-t border-slate-100">
-          <dt className="w-2/5 shrink-0 text-slate-800">Prijsindicatie</dt>
+          <dt className="w-2/5 shrink-0 text-slate-800">{t("Prijsindicatie")}</dt>
           <dd className="font-bold text-brand-text">
-            {euro(item.prijs)} <span className="font-normal text-slate-700">{item.btw}</span>
+            {euro(item.prijs)} <span className="font-normal text-slate-700">{t(item.btw)}</span>
           </dd>
         </div>
       </dl>
@@ -93,6 +99,9 @@ export function OfferteWeergave({
   /** Eerder gegeven akkoord (naam + datum), of null. */
   geaccepteerd: { door: string; op: string } | null;
 }) {
+  const t = useT();
+  const taal = useTaal();
+  const euro = maakEuro(taal);
   const [gekopieerd, setGekopieerd] = useState(false);
   const [akkoord, setAkkoord] = useState(false);
   const [naam, setNaam] = useState(klantNaam);
@@ -110,13 +119,13 @@ export function OfferteWeergave({
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) { setStatus("error"); return; }
-      setKlaar({ door: naam.trim(), op: new Date().toLocaleString("nl-NL", { dateStyle: "long", timeStyle: "short" }) });
+      setKlaar({ door: naam.trim(), op: new Date().toLocaleString(LOCALE[taal], { dateStyle: "long", timeStyle: "short" }) });
       setStatus("idle");
       setTimeout(() => akkoordRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
     } catch { setStatus("error"); }
   }
 
-  const deelTekst = `Offerte van ${bedrijf.naam}`;
+  const deelTekst = t("Offerte van {naam}", { naam: bedrijf.naam });
   const [pagina, setPagina] = useState("");
   useEffect(() => setPagina(window.location.href), []);
   const deelLink = (kanaal: "whatsapp" | "mail") => {
@@ -144,13 +153,13 @@ export function OfferteWeergave({
         <section className="rounded-2xl border border-slate-100 bg-white px-5 py-6 shadow-sm md:px-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 text-base text-slate-800">
-              <p className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-4xl">Offerte</p>
-              <p className="mt-1 text-base font-semibold text-slate-700">{klantNaam || "Uw offerte"}</p>
+              <p className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-4xl">{t("Offerte")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-700">{klantNaam || t("Uw offerte")}</p>
               {klantPlaats && <p>{klantPlaats}</p>}
               <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                <dt className="text-slate-700">Datum</dt><dd className="font-medium text-slate-800">{datum}</dd>
-                <dt className="text-slate-700">Referentie</dt><dd className="font-medium text-slate-800">{referentie}</dd>
-                <dt className="text-slate-700">Geldig tot</dt><dd className="font-medium text-slate-800">{geldigTot}</dd>
+                <dt className="text-slate-700">{t("Datum")}</dt><dd className="font-medium text-slate-800">{datum}</dd>
+                <dt className="text-slate-700">{t("Referentie")}</dt><dd className="font-medium text-slate-800">{referentie}</dd>
+                <dt className="text-slate-700">{t("Geldig tot")}</dt><dd className="font-medium text-slate-800">{geldigTot}</dd>
               </dl>
             </div>
             <div className="hidden min-w-0 break-words text-base leading-relaxed text-slate-800 sm:block sm:text-right">
@@ -160,17 +169,17 @@ export function OfferteWeergave({
               {bedrijf.telefoon && <p>{bedrijf.telefoon}</p>}
               {bedrijf.email && <p>{bedrijf.email}</p>}
               {bedrijf.website && <p>{bedrijf.website}</p>}
-              {bedrijf.kvk && <p>KvK {bedrijf.kvk}</p>}
+              {bedrijf.kvk && <p>{t("KvK")} {bedrijf.kvk}</p>}
               {bedrijf.telefoon && (
                 <a href={`tel:${bedrijf.telefoon.replace(/[^\d+]/g, "")}`} className="mt-3 inline-block rounded-full border border-brand-text/30 px-4 py-2 text-base font-semibold text-brand-text">
-                  Bel ons
+                  {t("Bel ons")}
                 </a>
               )}
             </div>
           </div>
           <div className="mt-5 space-y-3 border-t border-slate-100 pt-5 text-base leading-relaxed text-slate-800 sm:mt-6">
             <p>{intro}</p>
-            <p>Gaat u akkoord, dan plannen wij samen de inmeting. Na de inmeting en een voorschot of aanbetaling kunnen wij gaan beginnen.</p>
+            <p>{t("Gaat u akkoord, dan plannen wij samen de inmeting. Na de inmeting en een voorschot of aanbetaling kunnen wij gaan beginnen.")}</p>
           </div>
         </section>
 
@@ -180,9 +189,9 @@ export function OfferteWeergave({
 
         {items.length > 1 && (
           <div data-roos-totaal={totaal} className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex justify-between text-base">
-            <span className="font-semibold text-slate-700">Totaal</span>
+            <span className="font-semibold text-slate-700">{t("Totaal")}</span>
             <span className="font-bold text-brand-text">
-              {euro(totaal)} <span className="font-normal text-slate-700">{btw}</span>
+              {euro(totaal)} <span className="font-normal text-slate-700">{t(btw)}</span>
             </span>
           </div>
         )}
@@ -190,31 +199,31 @@ export function OfferteWeergave({
         <div ref={akkoordRef} className="scroll-mt-6">
         {klaar && (
           <section className="rounded-2xl border border-green-200 bg-green-50 px-5 py-5">
-            <p className="flex items-center gap-2 font-bold text-green-800"><Check className="size-5" /> Akkoord ontvangen, bedankt!</p>
+            <p className="flex items-center gap-2 font-bold text-green-800"><Check className="size-5" /> {t("Akkoord ontvangen, bedankt!")}</p>
             <p className="mt-2 text-base text-green-900 leading-relaxed">
-              Geaccepteerd door <strong>{klaar.door}</strong> op {klaar.op}. {bedrijf.naam} neemt contact met u op om de inmeting te plannen. Uw offerte kunt u hier altijd terugvinden of downloaden.
+              {t("Geaccepteerd door")} <strong>{klaar.door}</strong> {t("op")} {klaar.op}. {t("{naam} neemt contact met u op om de inmeting te plannen. Uw offerte kunt u hier altijd terugvinden of downloaden.", { naam: bedrijf.naam })}
             </p>
             <a href={`/api/offerte/${offerteId}/klant?download=1`} className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-700 py-3 text-base font-bold text-white">
-              <FileText className="size-4" /> Download uw offerte als pdf
+              <FileText className="size-4" /> {t("Download uw offerte als pdf")}
             </a>
           </section>
         )}
         {!klaar && (
           <section id="digitaal-akkoord" className="rounded-2xl bg-white border border-slate-100 shadow-sm px-5 py-5">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4">Digitaal akkoord</h2>
-            <label className="block text-base font-semibold text-slate-700 mb-2">Naam</label>
-            <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="Voor- en achternaam"
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4">{t("Digitaal akkoord")}</h2>
+            <label className="block text-base font-semibold text-slate-700 mb-2">{t("Naam")}</label>
+            <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder={t("Voor- en achternaam")}
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-brand" />
             <label className="mt-4 flex items-start gap-3 cursor-pointer select-none">
               <input type="checkbox" checked={akkoord} onChange={(e) => setAkkoord(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]" />
               <span className="text-base text-slate-800 leading-relaxed">
-                Ik heb de offerte gelezen en ga akkoord met de specificaties en prijsindicatie van {bedrijf.naam.replace(/\.$/, "")}.
+                {t("Ik heb de offerte gelezen en ga akkoord met de specificaties en prijsindicatie van {naam}.", { naam: bedrijf.naam.replace(/\.$/, "") })}
               </span>
             </label>
-            {status === "error" && <p className="mt-3 text-base text-red-600">Er is iets misgegaan. Probeer opnieuw.</p>}
+            {status === "error" && <p className="mt-3 text-base text-red-600">{t("Er is iets misgegaan. Probeer opnieuw.")}</p>}
             <button type="button" disabled={!akkoord || !naam.trim() || status === "bezig"} onClick={accepteer}
               className="mt-5 w-full rounded-xl bg-brand py-3 text-base font-bold text-white disabled:opacity-30 disabled:cursor-not-allowed">
-              {status === "bezig" ? "Verwerken..." : "Akkoord geven"}
+              {status === "bezig" ? t("Verwerken...") : t("Akkoord geven")}
             </button>
           </section>
         )}
@@ -223,11 +232,11 @@ export function OfferteWeergave({
         <div className="grid gap-3 pt-2">
           {!klaar && (
             <a href={`/api/offerte/${offerteId}/klant?download=1`} className="rounded-xl border border-slate-200 bg-white text-center py-3 text-base font-semibold text-slate-700">
-              Download als pdf
+              {t("Download als pdf")}
             </a>
           )}
           <p className="text-sm text-slate-700 text-center">
-            Vragen? {bedrijf.email ? <a href={`mailto:${bedrijf.email}`} className="underline">{bedrijf.email}</a> : bedrijf.naam}
+            {t("Vragen?")} {bedrijf.email ? <a href={`mailto:${bedrijf.email}`} className="underline">{bedrijf.email}</a> : bedrijf.naam}
           </p>
         </div>
 
@@ -235,25 +244,25 @@ export function OfferteWeergave({
           <p className="text-base font-bold text-slate-900">{bedrijf.naam}</p>
           {bedrijf.adres && <p>{bedrijf.adres}</p>}
           {(bedrijf.postcode || bedrijf.plaats) && <p>{[bedrijf.postcode, bedrijf.plaats].filter(Boolean).join(" ")}</p>}
-          {bedrijf.telefoon && <p>Telefoon: <a href={`tel:${bedrijf.telefoon.replace(/[^\d+]/g, "")}`} className="font-semibold text-brand-text">{bedrijf.telefoon}</a></p>}
-          {bedrijf.email && <p>E-mail: <a href={`mailto:${bedrijf.email}`} className="font-semibold text-brand-text">{bedrijf.email}</a></p>}
-          {bedrijf.website && <p>Website: {bedrijf.website}</p>}
-          {bedrijf.kvk && <p>KvK-nummer: {bedrijf.kvk}</p>}
+          {bedrijf.telefoon && <p>{t("Telefoon")}: <a href={`tel:${bedrijf.telefoon.replace(/[^\d+]/g, "")}`} className="font-semibold text-brand-text">{bedrijf.telefoon}</a></p>}
+          {bedrijf.email && <p>{t("E-mail")}: <a href={`mailto:${bedrijf.email}`} className="font-semibold text-brand-text">{bedrijf.email}</a></p>}
+          {bedrijf.website && <p>{t("Website")}: {bedrijf.website}</p>}
+          {bedrijf.kvk && <p>{t("KvK-nummer")}: {bedrijf.kvk}</p>}
         </footer>
       </main>
 
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3">
         <div className="max-w-xl md:max-w-4xl mx-auto flex items-center gap-3">
-          <span className="text-base font-semibold text-slate-900 mr-auto">Delen</span>
-          <a href={deelLink("whatsapp")} target="_blank" rel="noopener" aria-label="Delen via WhatsApp"
+          <span className="text-base font-semibold text-slate-900 mr-auto">{t("Delen")}</span>
+          <a href={deelLink("whatsapp")} target="_blank" rel="noopener" aria-label={t("Delen via WhatsApp")}
             className="flex size-11 items-center justify-center rounded-full bg-[#25D366] text-white">
             <svg viewBox="0 0 24 24" className="size-6" fill="currentColor" aria-hidden><path d="M12.04 2a9.9 9.9 0 0 0-8.45 15.07L2 22l5.07-1.55A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3 .92.98-2.92-.2-.31a8.2 8.2 0 1 1 6.72 3.64Zm4.5-6.15c-.25-.12-1.46-.72-1.69-.8-.23-.09-.39-.12-.56.12-.16.25-.64.8-.78.97-.14.16-.29.18-.54.06a6.7 6.7 0 0 1-3.3-2.88c-.25-.43.25-.4.72-1.33.08-.16.04-.3-.02-.42-.06-.12-.56-1.35-.76-1.85-.2-.48-.4-.42-.56-.42h-.47c-.16 0-.43.06-.65.3-.23.25-.86.84-.86 2.06 0 1.21.88 2.38 1 2.55.12.16 1.73 2.64 4.2 3.7.59.26 1.05.41 1.4.52.59.19 1.13.16 1.55.1.47-.07 1.46-.6 1.66-1.17.2-.58.2-1.07.14-1.17-.06-.1-.23-.16-.48-.28Z"/></svg>
           </a>
-          <a href={deelLink("mail")} aria-label="Delen via e-mail"
+          <a href={deelLink("mail")} aria-label={t("Delen via e-mail")}
             className="flex size-11 items-center justify-center rounded-full bg-brand text-white">
             <Mail className="size-5" />
           </a>
-          <button type="button" onClick={kopieer} aria-label="Kopieer link"
+          <button type="button" onClick={kopieer} aria-label={t("Kopieer link")}
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
             {gekopieerd ? <Check className="size-5" /> : <Link2 className="size-5" />}
           </button>

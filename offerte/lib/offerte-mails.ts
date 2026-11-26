@@ -5,6 +5,10 @@ import { offertes } from "@/db/schema";
 import { SITE_URL } from "@/lib/site";
 import { GOOGLE_REVIEW_URL } from "@/lib/bedrijf";
 import { eq } from "drizzle-orm";
+import { naarTaal, vertaal } from "@/lib/taal";
+
+/** Vertaalfunctie in de taal waarin de klant zijn offerte aanvroeg. */
+const tVoor = (o: { data: unknown }) => { const taal = naarTaal((o.data as { taal?: string })?.taal); return (x: string, w?: Record<string, string | number>) => vertaal(taal, x, w); };
 
 /**
  * Automatische mails aan klanten van BartMooi, één keer per dag via /api/cron/offerte-mails:
@@ -21,7 +25,7 @@ type Offerte = typeof offertes.$inferSelect;
 type Verzenden = { dryRun: boolean };
 
 /** Eenvoudige mail in de huisstijl van BartMooi, met één grote knop en eventueel een tweede. */
-function mailHtml(opts: { aanhef: string; regels: string[]; knop: string; url: string; knop2?: { label: string; url: string } }) {
+function mailHtml(opts: { aanhef: string; regels: string[]; knop: string; url: string; knop2?: { label: string; url: string }; groet?: string }) {
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #333; max-width: 600px; margin: 0 auto;">
       <div style="background: white; padding: 32px; border: 1px solid #e8edf2; border-radius: 8px;">
@@ -29,7 +33,7 @@ function mailHtml(opts: { aanhef: string; regels: string[]; knop: string; url: s
         ${opts.regels.map((r) => `<p style="color: #555; margin: 0 0 16px;">${esc(r)}</p>`).join("")}
         <p style="margin: 24px 0;"><a href="${esc(opts.url)}" style="background: ${KLEUR}; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">${esc(opts.knop)}</a></p>
         ${opts.knop2 ? `<p style="margin: 0 0 24px;"><a href="${esc(opts.knop2.url)}" style="border: 2px solid ${KLEUR}; color: ${KLEUR}; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">${esc(opts.knop2.label)}</a></p>` : ""}
-        <p style="color: #333; margin: 0;">Met vriendelijke groet,<br/><strong style="color: #10649E;">BartMooi B.V.</strong></p>
+        <p style="color: #333; margin: 0;">${esc(opts.groet ?? "Met vriendelijke groet,")}<br/><strong style="color: #10649E;">BartMooi B.V.</strong></p>
       </div>
     </div>`;
 }
@@ -71,19 +75,20 @@ export async function sendDueFollowUps({ dryRun }: Verzenden): Promise<number> {
       aantal++;
       continue;
     }
+    const t = tVoor(o);
     const naam = String((o.data as { naam?: string })?.naam ?? "").trim();
     const url = `${SITE_URL}/offerte/${o.id}`;
     const terugbelUrl = `${SITE_URL}/terugbellen/${o.id}`;
-    const aanhef = `Geachte ${naam}`.trim() + ",";
+    const aanhef = t("Geachte {naam},", { naam }).replace(" ,", ",");
     const regels = [
-      "Een paar dagen geleden ontving u een offerte van BartMooi. Heeft u nog vragen, of wilt u akkoord geven?",
-      "Akkoord geven kan met één klik op de offerte. Liever eerst even praten? Dan bellen wij u terug.",
+      t("Een paar dagen geleden ontving u een offerte van BartMooi. Heeft u nog vragen, of wilt u akkoord geven?"),
+      t("Akkoord geven kan met één klik op de offerte. Liever eerst even praten? Dan bellen wij u terug."),
     ];
     const ok = await stuur(
       o,
-      "Uw offerte van BartMooi",
-      mailHtml({ aanhef, regels, knop: "Bekijk uw offerte", url, knop2: { label: "Bel mij terug", url: terugbelUrl } }),
-      `${aanhef}\n\n${regels.join("\n")}\nBekijk uw offerte: ${url}\nBel mij terug: ${terugbelUrl}\n\nMet vriendelijke groet,\nBartMooi B.V.`,
+      t("Uw offerte van BartMooi"),
+      mailHtml({ aanhef, regels, knop: t("Bekijk uw offerte"), url, knop2: { label: t("Bel mij terug"), url: terugbelUrl }, groet: t("Met vriendelijke groet,") }),
+      `${aanhef}\n\n${regels.join("\n")}\n${t("Bekijk uw offerte")}: ${url}\n${t("Bel mij terug")}: ${terugbelUrl}\n\n${t("Met vriendelijke groet,")}\nBartMooi B.V.`,
     );
     if (!ok) continue;
     await bewaar(o, { herinneringAt: new Date().toISOString() });
@@ -114,17 +119,18 @@ export async function sendDueReviewRequests({ dryRun }: Verzenden): Promise<numb
       aantal++;
       continue;
     }
+    const t = tVoor(o);
     const naam = String((o.data as { naam?: string })?.naam ?? "").trim();
-    const aanhef = `Geachte ${naam}`.trim() + ",";
+    const aanhef = t("Geachte {naam},", { naam }).replace(" ,", ",");
     const regels = [
-      "Uw nieuwe kozijnen zijn geplaatst. Hartelijk dank dat u voor BartMooi koos.",
-      "Wilt u ons helpen met een korte review op Google? Het kost een minuut en het helpt andere klanten enorm.",
+      t("Uw nieuwe kozijnen zijn geplaatst. Hartelijk dank dat u voor BartMooi koos."),
+      t("Wilt u ons helpen met een korte review op Google? Het kost een minuut en het helpt andere klanten enorm."),
     ];
     const ok = await stuur(
       o,
-      "Hoe was uw ervaring met BartMooi?",
-      mailHtml({ aanhef, regels, knop: "Review achterlaten", url: reviewUrl }),
-      `${aanhef}\n\n${regels.join("\n")}\n${reviewUrl}\n\nMet vriendelijke groet,\nBartMooi B.V.`,
+      t("Hoe was uw ervaring met BartMooi?"),
+      mailHtml({ aanhef, regels, knop: t("Review achterlaten"), url: reviewUrl, groet: t("Met vriendelijke groet,") }),
+      `${aanhef}\n\n${regels.join("\n")}\n${reviewUrl}\n\n${t("Met vriendelijke groet,")}\nBartMooi B.V.`,
     );
     if (!ok) continue;
     await bewaar(o, { reviewAt: new Date().toISOString() });

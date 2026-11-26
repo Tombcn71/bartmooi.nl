@@ -14,6 +14,7 @@ import { getSvgString } from "@/lib/renderSvgForPdf";
 import { svgToPng } from "./svg-to-png";
 import { SITE_URL } from "@/lib/site";
 
+import { LOCALE, naarTaal, vertaal } from "@/lib/taal";
 Font.register({
   family: "Inter",
   fonts: [
@@ -380,8 +381,13 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
   const logoData = fs.readFileSync(logoPath);
   const logoBase64 = `data:image/png;base64,${logoData.toString("base64")}`;
 
-  const naam = data.naam || "Geachte klant";
-  const datum = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+  // De pdf staat in de taal waarin de klant de offerte aanvroeg.
+  const taal = naarTaal((data as { taal?: string }).taal);
+  const t = (x: string, w?: Record<string, string | number>) => vertaal(taal, x, w);
+  const loc = LOCALE[taal];
+  const naamIn = (n: string) => n.split(" · ").map((d) => t(d)).join(" · ");
+  const naam = data.naam || t("Geachte klant");
+  const datum = new Date().toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric" });
 
   // Producten: uit winkelmand (items[]) of één enkel product (legacy)
   const rawItems: CartItemData[] = data.items && data.items.length > 0
@@ -424,7 +430,7 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
   }));
 
   const meerdere = producten.length > 1;
-  const productNaam = meerdere ? `${producten.length} producten` : producten[0].item.product;
+  const productNaam = meerdere ? t("{n} producten", { n: producten.length }) : naamIn(producten[0].item.product);
 
   const doc = (
     <Document>
@@ -447,11 +453,11 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
         {/* ── Offerte titel + datum ── */}
         <View style={styles.offerteBlock}>
           <View>
-            <Text style={styles.offerteTitle}>Offerte aanvraag</Text>
+            <Text style={styles.offerteTitle}>{t("Offerte aanvraag")}</Text>
             <Text style={styles.offerteSubtitle}>{productNaam}</Text>
           </View>
           <View style={styles.dateBlock}>
-            <Text style={styles.dateLabel}>Datum</Text>
+            <Text style={styles.dateLabel}>{t("Datum")}</Text>
             <Text style={styles.dateValue}>{datum}</Text>
           </View>
         </View>
@@ -470,38 +476,38 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
         {producten.map((p, idx) => (
           <View key={idx} wrap={false}>
             <Text style={styles.sectionTitle}>
-              {meerdere ? `Product ${idx + 1} — ${p.item.product}` : "Productspecificaties"}
+              {meerdere ? `${t("Product")} ${idx + 1} — ${naamIn(p.item.product)}` : t("Productspecificaties")}
             </Text>
 
             {meerdere && (
               <View style={styles.specRow}>
-                <Text style={styles.specLabel}>Product</Text>
-                <Text style={styles.specValueBold}>{p.item.product}</Text>
+                <Text style={styles.specLabel}>{t("Product")}</Text>
+                <Text style={styles.specValueBold}>{naamIn(p.item.product)}</Text>
               </View>
             )}
             {p.specs.map(([label, value], i) => (
               <View key={i} style={styles.specRow}>
-                <Text style={styles.specLabel}>{label}</Text>
-                <Text style={styles.specValue}>{value}</Text>
+                <Text style={styles.specLabel}>{t(label)}</Text>
+                <Text style={styles.specValue}>{t(value)}</Text>
               </View>
             ))}
             {p.item.notitie ? (
               <View style={styles.specRow}>
-                <Text style={styles.specLabel}>Notitie</Text>
+                <Text style={styles.specLabel}>{t("Notitie")}</Text>
                 <Text style={styles.specValue}>{p.item.notitie}</Text>
               </View>
             ) : null}
             <View style={styles.specRow}>
-              <Text style={styles.specLabel}>Prijsindicatie</Text>
+              <Text style={styles.specLabel}>{t("Prijsindicatie")}</Text>
               <Text style={styles.specValueBold}>
-                € {p.item.prijs.toLocaleString("nl-NL", { minimumFractionDigits: 2 })} {btwTekst(p.item.specs)}
+                € {p.item.prijs.toLocaleString(loc, { minimumFractionDigits: 2 })} {t(btwTekst(p.item.specs))}
               </Text>
             </View>
 
             {p.png && (
               <View style={styles.drawingWrapper}>
                 <Image src={p.png} style={styles.drawingImage} />
-                <Text style={styles.drawingCaption}>Schematische weergave — niet op schaal</Text>
+                <Text style={styles.drawingCaption}>{t("Schematische weergave — niet op schaal")}</Text>
               </View>
             )}
           </View>
@@ -510,22 +516,22 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
         {/* ── Totaal + subsidie ── */}
         {meerdere && (
           <View style={[styles.specRow, { marginTop: 6, borderBottomWidth: 0 }]}>
-            <Text style={[styles.specLabel, { fontFamily: "Inter", fontWeight: 700, color: DARK }]}>Totaal</Text>
+            <Text style={[styles.specLabel, { fontFamily: "Inter", fontWeight: 700, color: DARK }]}>{t("Totaal")}</Text>
             <Text style={styles.specValueBold}>
-              € {(data.prijs ?? producten.reduce((s, p) => s + p.item.prijs, 0)).toLocaleString("nl-NL", { minimumFractionDigits: 2 })}{" "}
-              {producten.every((p) => p.item.specs.klantType === "particulier") ? "incl. btw" : "excl. btw"}
+              € {(data.prijs ?? producten.reduce((s, p) => s + p.item.prijs, 0)).toLocaleString(loc, { minimumFractionDigits: 2 })}{" "}
+              {t(producten.every((p) => p.item.specs.klantType === "particulier") ? "incl. btw" : "excl. btw")}
             </Text>
           </View>
         )}
         {data.subsidieIndicatie && data.subsidieIndicatie > 0 ? (
           <View style={styles.specRow}>
-            <Text style={styles.specLabel}>ISDE subsidie-indicatie</Text>
-            <Text style={styles.specValueBold}>≈ € {data.subsidieIndicatie.toLocaleString("nl-NL")}</Text>
+            <Text style={styles.specLabel}>{t("ISDE subsidie-indicatie")}</Text>
+            <Text style={styles.specValueBold}>≈ € {data.subsidieIndicatie.toLocaleString(loc)}</Text>
           </View>
         ) : null}
 
         {/* ── Inclusief montage ── */}
-        <Text style={styles.sectionTitle}>In de prijs inbegrepen</Text>
+        <Text style={styles.sectionTitle}>{t("In de prijs inbegrepen")}</Text>
         {[
           "Verwijderen en afvoeren van de bestaande kozijnen.",
           "Plaatsen van nieuwe kozijnen met HR+++ glas.",
@@ -536,53 +542,53 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
         ].map((item, i) => (
           <View key={i} style={styles.bulletRow}>
             <Text style={styles.bulletDot}>–</Text>
-            <Text style={styles.bulletText}>{item}</Text>
+            <Text style={styles.bulletText}>{t(item)}</Text>
           </View>
         ))}
 
         {/* ── Betaling & levertijd ── */}
-        <Text style={styles.sectionTitle}>Betaling & levertijd</Text>
+        <Text style={styles.sectionTitle}>{t("Betaling & levertijd")}</Text>
         <View style={styles.twoCol}>
           <View style={styles.colBlock}>
-            <Text style={styles.colLabel}>Betalingstermijnen</Text>
+            <Text style={styles.colLabel}>{t("Betalingstermijnen")}</Text>
             <Text style={styles.colText}>
-              30% direct na akkoord{"\n"}
-              40% bij aanvang werkzaamheden{"\n"}
-              30% na oplevering
+              {t("30% direct na akkoord")}{"\n"}
+              {t("40% bij aanvang werkzaamheden")}{"\n"}
+              {t("30% na oplevering")}
             </Text>
           </View>
           <View style={styles.colBlock}>
-            <Text style={styles.colLabel}>Levertijd</Text>
-            <Text style={styles.colText}>Circa 6 weken na aanbetaling.</Text>
-            <Text style={[styles.colLabel, { marginTop: 10 }]}>Geldigheid offerte</Text>
-            <Text style={styles.colText}>30 dagen na offertedatum.</Text>
+            <Text style={styles.colLabel}>{t("Levertijd")}</Text>
+            <Text style={styles.colText}>{t("Circa 6 weken na aanbetaling.")}</Text>
+            <Text style={[styles.colLabel, { marginTop: 10 }]}>{t("Geldigheid offerte")}</Text>
+            <Text style={styles.colText}>{t("30 dagen na offertedatum.")}</Text>
           </View>
         </View>
 
         {/* ── Garantie ── */}
-        <Text style={styles.sectionTitle}>Garantie</Text>
+        <Text style={styles.sectionTitle}>{t("Garantie")}</Text>
         {([
           ["Kozijnen & isolatieglas", "10 jaar"],
           ["Hang- en sluitwerk", "5 jaar"],
           ["Ventilatieroosters", "2 jaar"],
         ] as [string, string][]).map(([label, years], i) => (
           <View key={i} style={styles.specRow}>
-            <Text style={styles.specLabel}>{label}</Text>
-            <Text style={styles.specValue}>{years}</Text>
+            <Text style={styles.specLabel}>{t(label)}</Text>
+            <Text style={styles.specValue}>{t(years)}</Text>
           </View>
         ))}
 
         {/* ── Digitale acceptatie ── */}
         <View style={styles.signBlock}>
-          <Text style={styles.signTitle}>Akkoord offerte</Text>
+          <Text style={styles.signTitle}>{t("Akkoord offerte")}</Text>
           <Text style={styles.signIntro}>
-            Door ondertekening van deze offerte gaat u akkoord met de bovenstaande specificaties, prijzen en voorwaarden van BartMooi B.V. U ontvangt na ontvangst van de aanbetaling een bevestiging en planning.
+            {t("Door ondertekening van deze offerte gaat u akkoord met de bovenstaande specificaties, prijzen en voorwaarden van BartMooi B.V. U ontvangt na ontvangst van de aanbetaling een bevestiging en planning.")}
           </Text>
 
           {/* Digitale optie */}
           {data.offerteId && (
             <View style={{ marginBottom: 16, padding: 10, borderWidth: 1, borderColor: LINE, borderRadius: 4 }}>
-              <Text style={{ fontSize: 8.5, color: GREY, marginBottom: 4 }}>Liever digitaal akkoord geven?</Text>
+              <Text style={{ fontSize: 8.5, color: GREY, marginBottom: 4 }}>{t("Liever digitaal akkoord geven?")}</Text>
               <Text style={{ fontSize: 9, color: DARK, fontFamily: "Inter", fontWeight: 700 }}>
                 {`${SITE_URL}/accepteer/${data.offerteId}`}
               </Text>
@@ -592,17 +598,17 @@ export async function generateOffertePdf(_email: string, data: OfferteData): Pro
           {/* Papieren handtekening */}
           <View style={styles.signFields}>
             <View style={styles.signField}>
-              <Text style={styles.signLabel}>Naam</Text>
+              <Text style={styles.signLabel}>{t("Naam")}</Text>
               <View style={styles.signLine} />
               <Text style={styles.signLineLabel}>{naam}</Text>
             </View>
             <View style={styles.signField}>
-              <Text style={styles.signLabel}>Datum</Text>
+              <Text style={styles.signLabel}>{t("Datum")}</Text>
               <View style={styles.signLine} />
               <Text style={styles.signLineLabel}>________________________</Text>
             </View>
             <View style={styles.signField}>
-              <Text style={styles.signLabel}>Handtekening</Text>
+              <Text style={styles.signLabel}>{t("Handtekening")}</Text>
               <View style={styles.signLine} />
               <Text style={styles.signLineLabel}> </Text>
             </View>

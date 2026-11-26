@@ -5,7 +5,9 @@ import { SchuifpuiTweevaks, SchuifpuiViervaks } from "@/lib/schuifpui-svgs";
 import { KozijnTechnisch, TECHNISCH } from "@/app/components/KozijnTechnisch";
 import { PUI_KUNSTSTOF_BEGINMATEN } from "@/lib/schuifpui";
 
+import { useT } from "@/app/components/TaalContext";
 export default function SchuifpuiOverview() {
+  const t = useT();
   const [activeType, setActiveType] = useState("2-vaks");
 
   const puien = [
@@ -35,16 +37,16 @@ export default function SchuifpuiOverview() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-10 border-l-4 border-brand pl-4 md:pl-6">
         <div className="mb-6 lg:mb-0">
           <h1 className="text-2xl md:text-4xl font-bold text-[#1a1a1a] mb-1 md:mb-3 tracking-tight">
-            Kunststof schuifpuien
+            {t("Kunststof schuifpuien")}
           </h1>
           <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">
-            Kies je gewenste indeling
+            {t("Kies je gewenste indeling")}
           </p>
         </div>
 
         <div className="w-full lg:w-auto">
           <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest lg:text-right">
-            In welke uitvoering ben je geïnteresseerd?
+            {t("In welke uitvoering ben je geïnteresseerd?")}
           </p>
           <div className="flex bg-[#f4f7f9] p-1 rounded-xl w-full">
             {["2-vaks", "4-vaks"].map((type) => (
@@ -56,7 +58,7 @@ export default function SchuifpuiOverview() {
                     ? "bg-brand text-white shadow-md"
                     : "text-[#666666] hover:text-brand-text"
                 }`}>
-                {type}
+                {t(type)}
               </button>
             ))}
           </div>
@@ -75,7 +77,7 @@ export default function SchuifpuiOverview() {
               <div className={`relative aspect-[4/3] ${TECHNISCH[item.slug] ? "bg-slate-50" : "bg-white"} border border-slate-100 rounded-2xl flex items-center justify-center p-6 md:p-8 shadow-sm group-hover:shadow-md transition-shadow overflow-hidden`}>
                 {item.best && (
                   <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-brand text-white text-[8px] md:text-[9px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full tracking-widest z-10 uppercase">
-                    POPULAIR
+                    {t("POPULAIR")}
                   </div>
                 )}
                 <div className="w-full h-full flex items-center justify-center">
@@ -102,10 +104,10 @@ export default function SchuifpuiOverview() {
 
               <div className="mt-4 md:mt-6 text-center">
                 <h3 className="font-bold text-[#1a1a1a] text-sm md:text-base group-hover:text-brand-text transition-colors uppercase tracking-tight leading-tight">
-                  {item.name}
+                  {t(item.name)}
                 </h3>
                 <div className="mt-1 md:mt-2 text-[10px] font-bold text-brand-text opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity uppercase tracking-widest">
-                  Stel nu samen →
+                  {t("Stel nu samen")} →
                 </div>
               </div>
             </Link>

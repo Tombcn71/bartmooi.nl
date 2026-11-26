@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { KozijnTechnisch, TECHNISCH } from "./KozijnTechnisch";
 import { useBron } from "@/lib/use-bron";
+import { useT } from "@/app/components/TaalContext";
 
 /** Eén product in het overzicht: de technische tekening staat los (geen vak), met naam en een korte tekst eronder. */
 export function ProductTegel({
@@ -22,6 +23,7 @@ export function ProductTegel({
   hoogte: number;
   className?: string;
 }) {
+  const t = useT();
   const s = TECHNISCH[spec];
   // Offerte maken (Bart zelf) op een telefoon: alleen de naam, zodat alle producten in één beeld staan.
   const compact = useBron() === "onspot";
@@ -40,10 +42,10 @@ export function ProductTegel({
       </div>
       <div className="shrink-0">
         <p className="flex items-center justify-center gap-1.5 text-base font-bold tracking-wide text-slate-900 uppercase md:text-lg">
-          {name}
+          {t(name)}
           <ArrowRight className="size-4 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
         </p>
-        <p className={`mx-auto mt-1 max-w-[16rem] text-xs leading-snug text-slate-500 md:text-sm ${compact ? "hidden md:block" : ""}`}>{tekst}</p>
+        <p className={`mx-auto mt-1 max-w-[16rem] text-xs leading-snug text-slate-500 md:text-sm ${compact ? "hidden md:block" : ""}`}>{t(tekst)}</p>
       </div>
     </Link>
   );

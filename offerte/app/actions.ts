@@ -10,6 +10,8 @@ import { noteer } from "@/lib/bezoek";
 import { generateOffertePdf } from "@/app/lib/generate-offerte-pdf";
 import { bedrijfsOpbouw, opbouwRegels } from "@/lib/opbouw";
 import { SITE_URL } from "@/lib/site";
+import { getTaal } from "@/lib/taal-server";
+import { vertaal } from "@/lib/taal";
 
 export async function adminLogin(password: string) {
   if (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_TOKEN) {
@@ -200,8 +202,10 @@ async function stuurInterneNotificatie(opts: {
   totaalPrijs: number;
   totaalSubsidie: number;
   offerteId: string;
+  taal?: string;
 }): Promise<void> {
   const { klant, items, totaalPrijs, totaalSubsidie, offerteId } = opts;
+  const taalKlant = ({ en: "Engels", de: "Duits", pl: "Pools" } as Record<string, string>)[opts.taal ?? ""];
   const regels = items.map(itemRegel);
   const opb = bedrijfsOpbouw(items);
   const opbT = opb ? opbouwRegels(opb) : null;
@@ -216,7 +220,9 @@ async function stuurInterneNotificatie(opts: {
         `Naam: ${klant.naam || "-"}\n` +
         `E-mail: ${klant.email}\n` +
         `Woonplaats: ${klant.woonplaats || "-"}\n` +
-        `Telefoon: ${klant.telefoon || "-"}\n\n` +
+        `Telefoon: ${klant.telefoon || "-"}\n` +
+        (taalKlant ? `Taal van de klant: ${taalKlant} (de klant kreeg de offerte in het ${taalKlant})\n` : "") +
+        `\n` +
         `Producten:\n${regels.map((r) => `  • ${r}`).join("\n")}\n\n` +
         `Totaal: ${euro(totaalPrijs)}\n` +
         (opbT ? `\nWat dit voor jou betekent (${opbT.kop}):\n${opbT.regels.map((r) => `  ${r.naam}: ${r.bedrag}`).join("\n")}\n\n` : "") +
@@ -230,6 +236,7 @@ async function stuurInterneNotificatie(opts: {
             <tr><td style="padding: 2px 12px 2px 0; color: #777;">E-mail</td><td>${klant.email}</td></tr>
             <tr><td style="padding: 2px 12px 2px 0; color: #777;">Woonplaats</td><td>${klant.woonplaats || "-"}</td></tr>
             <tr><td style="padding: 2px 12px 2px 0; color: #777;">Telefoon</td><td>${klant.telefoon || "-"}</td></tr>
+            ${taalKlant ? `<tr><td style="padding: 2px 12px 2px 0; color: #777;">Taal</td><td><strong>${taalKlant}</strong> (de klant kreeg de offerte in het ${taalKlant})</td></tr>` : ""}
           </table>
           <p style="font-weight: bold; margin: 0 0 6px;">Producten</p>
           <ul style="margin: 0 0 20px; padding-left: 18px; color: #444;">
@@ -270,9 +277,13 @@ export async function saveOffertes(
 
     const totaalPrijs = items.reduce((s, i) => s + Number(i.prijs ?? 0), 0);
     const totaalSubsidie = items.reduce((s, i) => s + berekenSubsidie(i), 0);
+    // Taal van de klant (de offerte en de mail in die taal); bij inmeten door Bart altijd Nederlands.
+    const taal = bron === "onspot" ? "nl" : await getTaal();
+    const t = (tekst: string, w?: Record<string, string | number>) => vertaal(taal, tekst, w);
 
     const data = {
       naam: klant.naam,
+      ...(taal !== "nl" ? { taal } : {}),
       woonplaats: klant.woonplaats,
       telefoon: klant.telefoon,
       ...(klant.adres ? { adres: klant.adres } : {}),
@@ -291,24 +302,24 @@ export async function saveOffertes(
 
     // Geen bijlage: de klant opent de offerte online (daar kan hij hem delen, akkoord geven en de pdf downloaden).
     const offerteUrl = `${SITE_URL}/offerte/${offerteId}`;
-    const aantalTekst = `${items.length} product${items.length !== 1 ? "en" : ""}`;
+    const aantalTekst = t(items.length === 1 ? "{n} product" : "{n} producten", { n: items.length });
     const akkoordTekst = bron === "onspot" ? " Op die pagina kunt u ook akkoord geven." : "";
 
     const { error } = await getResend().emails.send({
       from: "Bart Mooi <info@offerte.bartmooi.nl>",
       to: [klant.email],
       replyTo: "info@bartmooi.nl",
-      subject: `Uw offerte — BartMooi`,
-      text: `Geachte ${klant.naam},\n\nHartelijk dank voor uw aanvraag. Wij hebben uw aanvraag voor ${aantalTekst} in goede orde ontvangen.\nUw offerte staat online klaar: ${offerteUrl}\nDaar kunt u hem bekijken, delen en als pdf downloaden.${akkoordTekst}\n\nMet vriendelijke groet,\nBartMooi`,
+      subject: `${t("Uw offerte")} — BartMooi`,
+      text: `${t("Geachte {naam},", { naam: klant.naam })}\n\n${t("Hartelijk dank voor uw aanvraag. Wij hebben uw aanvraag voor {aantal} in goede orde ontvangen.", { aantal: aantalTekst })}\n${t("Uw offerte staat online klaar:")} ${offerteUrl}\n${t("Daar kunt u hem bekijken, delen en als pdf downloaden.")}${akkoordTekst}\n\n${t("Met vriendelijke groet,")}\nBartMooi`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #333; max-width: 600px; margin: 0 auto;">
           <div style="background: white; padding: 32px; border: 1px solid #e8edf2; border-radius: 8px;">
-            <p style="font-size: 16px; font-weight: bold; color: #1a1a1a; margin: 0 0 8px;">Geachte ${klant.naam},</p>
-            <p style="color: #555; margin: 0 0 20px;">Hartelijk dank voor uw aanvraag. Wij hebben uw aanvraag voor <strong>${aantalTekst}</strong> in goede orde ontvangen.</p>
-            <p style="color: #555; margin: 0 0 24px;">Uw persoonlijke offerte staat online klaar. Daar kunt u hem bekijken, delen en als pdf downloaden.${akkoordTekst}</p>
-            <p style="margin: 0 0 24px;"><a href="${offerteUrl}" style="background: #1E5079; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Bekijk uw offerte online</a></p>
-            <p style="color: #555; margin: 0 0 32px;">${bron === "onspot" ? "Heeft u vragen? Reageer gewoon op deze mail." : "Wij nemen zo spoedig mogelijk contact met u op om de offerte samen door te nemen."}</p>
-            <p style="color: #333; margin: 0;">Met vriendelijke groet,<br/>
+            <p style="font-size: 16px; font-weight: bold; color: #1a1a1a; margin: 0 0 8px;">${t("Geachte {naam},", { naam: klant.naam })}</p>
+            <p style="color: #555; margin: 0 0 20px;">${t("Hartelijk dank voor uw aanvraag. Wij hebben uw aanvraag voor {aantal} in goede orde ontvangen.", { aantal: `<strong>${aantalTekst}</strong>` })}</p>
+            <p style="color: #555; margin: 0 0 24px;">${t("Uw persoonlijke offerte staat online klaar. Daar kunt u hem bekijken, delen en als pdf downloaden.")}${akkoordTekst}</p>
+            <p style="margin: 0 0 24px;"><a href="${offerteUrl}" style="background: #1E5079; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">${t("Bekijk uw offerte online")}</a></p>
+            <p style="color: #555; margin: 0 0 32px;">${bron === "onspot" ? "Heeft u vragen? Reageer gewoon op deze mail." : t("Wij nemen zo spoedig mogelijk contact met u op om de offerte samen door te nemen.")}</p>
+            <p style="color: #333; margin: 0;">${t("Met vriendelijke groet,")}<br/>
             <strong style="color: #10649E;">BartMooi B.V.</strong><br/>
             <span style="color: #999; font-size: 12px;">info@bartmooi.nl · Den Haag</span></p>
           </div>
@@ -327,6 +338,7 @@ export async function saveOffertes(
       totaalPrijs,
       totaalSubsidie,
       offerteId,
+      taal,
     });
 
     revalidatePath("/admin/offertes");

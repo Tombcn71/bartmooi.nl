@@ -6,6 +6,8 @@ import { formulier } from "@/lib/assistent-formulier";
 import { saveOffertes } from "@/app/actions";
 import { useBron } from "@/lib/use-bron";
 import { CartAddedModal } from "@/app/components/CartAddedModal";
+import { useT, useTaal } from "@/app/components/TaalContext";
+import { LOCALE } from "@/lib/taal";
 import { NumberInput } from "@/app/components/NumberInput";
 import { FormField } from "@/app/components/FormField";
 import { getMatrix } from "@/lib/matrix";
@@ -417,6 +419,8 @@ export function KozijnConfigurator({
   /** Voorbeeld in het dashboard: één smalle kolom, zonder offerteknop en winkelmandje. */
   voorbeeld?: boolean;
 }) {
+  const t = useT();
+  const loc = LOCALE[useTaal()];
   const alu = product === "aluminium";
   const cat = alu ? ALU_CATALOGUS : KOZIJN_CATALOGUS;
   // Aluminium biedt alleen de kozijntypes die er ook echt voor zijn.
@@ -810,10 +814,10 @@ export function KozijnConfigurator({
   };
 
   if (!matrix)
-    return <div className="p-10 text-center">Prijzen ophalen...</div>;
+    return <div className="p-10 text-center">{t("Prijzen ophalen...")}</div>;
   if (!kozijn)
     return (
-      <div className="p-10 text-center text-red-500">Kozijn niet gevonden.</div>
+      <div className="p-10 text-center text-red-500">{t("Kozijn niet gevonden.")}</div>
     );
 
   const sel = (
@@ -824,7 +828,7 @@ export function KozijnConfigurator({
   ) => (
     <div>
       <label className="text-[11px] font-bold text-slate-800 uppercase">
-        {label}
+        {t(label)}
       </label>
       <select
         value={value}
@@ -832,10 +836,10 @@ export function KozijnConfigurator({
         className="w-full border p-2.5 rounded-lg text-sm capitalize">
         {Object.keys(opties).map((k) => (
           <option key={k} value={k}>
-            {k
+            {t(k
               .replace(/-/g, " ")
               .replace(/creon /gi, "")
-              .trim()}
+              .trim())}
           </option>
         ))}
       </select>
@@ -846,14 +850,14 @@ export function KozijnConfigurator({
     const groep = STANDAARD_KEUZES.find((g) => g.id === groepId)!;
     return (
       <div>
-        <label className="text-[11px] font-bold text-slate-800 uppercase">{groep.titel}</label>
+        <label className="text-[11px] font-bold text-slate-800 uppercase">{t(groep.titel)}</label>
         <select
           value={value}
           onChange={(e) => setter(e.target.value)}
           className="w-full border p-2.5 rounded-lg text-sm">
           {groep.keuzes.map((k) => (
             <option key={k.id} value={k.id}>
-              {k.naam}
+              {t(k.naam)}
             </option>
           ))}
         </select>
@@ -862,20 +866,20 @@ export function KozijnConfigurator({
   };
 
   // Naam van de gekozen optie, voor de samenvatting naast de stap; bij het oude model de ruwe sleutel.
-  const kn = (groep: string, id: string | undefined) => (id ? (standaard ? keuzeNaam(groep, id, cat) : id.replace(/-/g, " ")) : "");
+  const kn = (groep: string, id: string | undefined) => (id ? t(standaard ? keuzeNaam(groep, id, cat) : id.replace(/-/g, " ")) : "");
 
   const selAlu = (groepId: string) => {
     const groep = ALU_CATALOGUS.keuzes.find((g) => g.id === groepId)!;
     return (
       <div key={groep.id}>
-        <label className="text-[11px] font-bold text-slate-800 uppercase">{groep.titel}</label>
+        <label className="text-[11px] font-bold text-slate-800 uppercase">{t(groep.titel)}</label>
         <select
           value={aluKeuzes[groep.id] ?? ""}
           onChange={(e) => setAluKeuzes((k) => ({ ...k, [groep.id]: e.target.value }))}
           className="w-full border p-2.5 rounded-lg text-sm">
           {groep.keuzes.map((k) => (
             <option key={k.id} value={k.id}>
-              {k.naam}
+              {t(k.naam)}
             </option>
           ))}
         </select>
@@ -891,16 +895,16 @@ export function KozijnConfigurator({
   const rond = (n: number) => Math.round(n * btwMaal * 100) / 100;
   const heeftMontage = isStandaardModel(matrix) && (matrix.montage ?? 0) > 0;
   const montageBedrag = heeftMontage && mv ? rond(mv.totaal) : 0;
-  const bedragTekst = (n: number) => n.toLocaleString("nl-NL", { minimumFractionDigits: 2 });
+  const bedragTekst = (n: number) => n.toLocaleString(loc, { minimumFractionDigits: 2 });
   const prijsTekst = bedragTekst(berekendePrijs);
-  const prijsLabel = "Prijsindicatie";
+  const prijsLabel = t("Prijsindicatie");
   // Eén duidelijke regel onder de prijs: wat zit erin (aantal, montage, btw).
   const toelichting = standaard ? (
     <div className="mt-1 text-sm font-medium text-slate-700">
       {[
-        aantal > 1 ? `Voor ${aantal} stuks` : "",
-        heeftMontage ? "Inclusief montage" : "Zonder montage",
-        metBtw ? `incl. ${btwPct}% btw` : "excl. btw",
+        aantal > 1 ? t("Voor {n} stuks", { n: aantal }) : "",
+        heeftMontage ? t("Inclusief montage") : t("Zonder montage"),
+        metBtw ? t("incl. {p}% btw", { p: btwPct }) : t("excl. btw"),
       ].filter(Boolean).join(" · ")}
     </div>
   ) : null;
@@ -908,11 +912,11 @@ export function KozijnConfigurator({
   const montageRegels = montageApart && montageBedrag > 0 ? (
     <div className="mt-1 space-y-0.5 text-xs text-slate-600">
       <div className="flex justify-between gap-6">
-        <span>waarvan kozijn</span>
+        <span>{t("waarvan kozijn")}</span>
         <span className="tabular-nums">€ {bedragTekst(Math.round((berekendePrijs - montageBedrag) * 100) / 100)}</span>
       </div>
       <div className="flex justify-between gap-6">
-        <span>waarvan montage</span>
+        <span>{t("waarvan montage")}</span>
         <span className="tabular-nums">€ {bedragTekst(montageBedrag)}</span>
       </div>
     </div>
@@ -929,14 +933,14 @@ export function KozijnConfigurator({
       <div className={voorbeeld ? "p-4" : "max-w-[1200px] mx-auto px-4 sm:px-6 py-4 md:py-10"}>
         {voorbeeld && (
           <div className="sticky top-0 z-20 -mx-4 -mt-4 mb-3 border-b border-slate-100 bg-white/95 px-4 py-2 backdrop-blur">
-            <span className="text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? " · incl. btw" : " · excl. btw") : ""}</span>
+            <span className="text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? ` · ${t("incl. btw")}` : ` · ${t("excl. btw")}`) : ""}</span>
             <div className="text-2xl font-semibold tabular-nums text-slate-800">€ {prijsTekst}</div>
             {toelichting}
             {montageRegels}
           </div>
         )}
         <h1 className={`font-black text-slate-800 ${voorbeeld ? "mb-2 text-base" : "mb-3 text-xl sm:text-2xl"}`}>
-          {alu ? "Aluminium — " : ""}{kozijn.name}
+          {alu ? `${t("Aluminium")} — ` : ""}{t(kozijn.name)}
         </h1>
         <div className={voorbeeld ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-12"}>
           <div id="roos-beeld" className={voorbeeld ? "min-w-0 space-y-3 scroll-mt-20" : "lg:col-span-7 min-w-0 space-y-3 scroll-mt-20"}>
@@ -953,10 +957,10 @@ export function KozijnConfigurator({
                   {!voorbeeld && heeftFoto && (
                     <div className="flex flex-wrap items-center gap-2">
                       {heeftFoto && (
-                        <div role="group" aria-label="Tekening of foto" className="flex w-fit rounded-xl bg-slate-100 p-1">
+                        <div role="group" aria-label={t("Tekening of foto")} className="flex w-fit rounded-xl bg-slate-100 p-1">
                           {(["tekening", "foto"] as const).map((w) => (
                             <button key={w} type="button" aria-pressed={weergave === w} onClick={() => setWeergave(w)} className={knop(weergave === w)}>
-                              {w === "tekening" ? "Tekening" : "Foto"}
+                              {w === "tekening" ? t("Tekening") : t("Foto")}
                             </button>
                           ))}
                         </div>
@@ -968,17 +972,17 @@ export function KozijnConfigurator({
                       <div className="relative aspect-4/3 overflow-hidden rounded-xl bg-slate-100">
                         <Image
                           src={kozijnFotoPad(fotoGevel, slug, fotoKleur!)}
-                          alt={`${kozijn.name} in ${fotoKleur} op een gevel van ${FOTO_GEVELS.find((g) => g.id === fotoGevel)?.naam.toLowerCase()}`}
+                          alt={t(kozijn.name)}
                           fill
                           sizes="(min-width: 1024px) 652px, calc(100vw - 32px)"
                           priority
                           className="object-cover"
                         />
                       </div>
-                      <p className="mt-1.5 text-center text-xs text-slate-700">Buitenkant</p>
+                      <p className="mt-1.5 text-center text-xs text-slate-700">{t("Buitenkant")}</p>
                       {FOTO_GEVELS.length > 1 && (
-                      <div role="group" aria-label="Gevel" className="mt-3">
-                        <p className="mb-1.5 text-xs font-bold text-slate-800">Kies je gevel</p>
+                      <div role="group" aria-label={t("Gevel")} className="mt-3">
+                        <p className="mb-1.5 text-xs font-bold text-slate-800">{t("Kies je gevel")}</p>
                         <div className="grid grid-cols-3 gap-2">
                           {FOTO_GEVELS.map((g) => (
                             <button
@@ -990,7 +994,7 @@ export function KozijnConfigurator({
                               <span className="relative mb-1 block aspect-16/9 overflow-hidden rounded-[5px] bg-slate-100">
                                 <Image src={kozijnFotoPad(g.id, slug, fotoKleur!)} alt="" fill sizes="(min-width: 1024px) 160px, 22vw" className="object-cover" />
                               </span>
-                              {g.naam}
+                              {t(g.naam)}
                             </button>
                           ))}
                         </div>
@@ -1003,13 +1007,13 @@ export function KozijnConfigurator({
                       <KozijnTekening kozijn={kozijn} className="h-full max-w-full" breedte={tekenB} hoogte={tekenH} maten={!voorbeeld} aanzicht={aanzicht} />
                     </div>
                   )}
-                  {!toonFoto && !voorbeeld && TECHNISCH[kozijn.slug] && <p className="-mt-1 text-center text-xs text-slate-700">Binnenaanzicht</p>}
+                  {!toonFoto && !voorbeeld && TECHNISCH[kozijn.slug] && <p className="-mt-1 text-center text-xs text-slate-700">{t("Binnenaanzicht")}</p>}
                 </>
               );
             })()}
 
-            <div role="group" aria-label="Hoeveel ramen naast elkaar?">
-              <p className={stap}>{fotoStap + 1}. Hoeveel ramen naast elkaar?</p>
+            <div role="group" aria-label={t("Hoeveel ramen naast elkaar?")}>
+              <p className={stap}>{fotoStap + 1}. {t("Hoeveel ramen naast elkaar?")}</p>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 2, 3, 4].filter((n) => lijst.some((k) => k.v === n)).map((n) => (
                   <button
@@ -1029,8 +1033,8 @@ export function KozijnConfigurator({
               </div>
             </div>
 
-            <div role="group" aria-label="Type kozijn">
-              <p className={stap}>{fotoStap + 2}. Type kozijn</p>
+            <div role="group" aria-label={t("Type kozijn")}>
+              <p className={stap}>{fotoStap + 2}. {t("Type kozijn")}</p>
               <div ref={typeRij} className="relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible">
                 {lijst.filter((k) => k.v === kozijn.v).map((k) => (
                   <button
@@ -1043,7 +1047,7 @@ export function KozijnConfigurator({
                     <span className="mb-1 flex h-10 items-center justify-center sm:h-14">
                       <KozijnTekening kozijn={k} className="h-full max-w-full **:[vector-effect:non-scaling-stroke]" breedte={beginmaat(k.slug)[0]} hoogte={beginmaat(k.slug)[1]} />
                     </span>
-                    {k.name}
+                    {t(k.name)}
                   </button>
                 ))}
               </div>
@@ -1054,22 +1058,22 @@ export function KozijnConfigurator({
           <div className={voorbeeld ? "min-w-0" : "min-w-0 lg:col-span-5"}>
             <div className={voorbeeld ? "space-y-3" : "space-y-3 lg:bg-white lg:border lg:border-slate-200 lg:rounded-xl lg:p-6 lg:shadow-sm"}>
               <div className="hidden lg:block">
-                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? " · incl. btw" : " · excl. btw") : ""}</span>
+                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? ` · ${t("incl. btw")}` : ` · ${t("excl. btw")}`) : ""}</span>
                 <div className="text-3xl text-slate-800">€ {prijsTekst}</div>
                 {toelichting}
                 {montageRegels}
               </div>
 
               {standaard && (
-                <div role="group" aria-label="Particulier of zakelijk" className="flex w-fit rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
-                  {(["particulier", "zakelijk"] as const).map((t) => (
+                <div role="group" aria-label={t("Particulier of zakelijk")} className="flex w-fit rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+                  {(["particulier", "zakelijk"] as const).map((kt) => (
                     <button
-                      key={t}
+                      key={kt}
                       type="button"
-                      aria-pressed={klantType === t}
-                      onClick={() => setKlantType(t)}
-                      className={`rounded-md px-3 py-1.5 capitalize ${klantType === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-700"}`}>
-                      {t}
+                      aria-pressed={klantType === kt}
+                      onClick={() => setKlantType(kt)}
+                      className={`rounded-md px-3 py-1.5 capitalize ${klantType === kt ? "bg-white text-slate-900 shadow-sm" : "text-slate-700"}`}>
+                      {t(kt)}
                     </button>
                   ))}
                 </div>
@@ -1080,23 +1084,23 @@ export function KozijnConfigurator({
                 <FormField label="Afmetingen" value={`${breedte} × ${hoogte} mm`} defaultOpen>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[11px] font-bold text-slate-800 uppercase">Breedte (mm)</label>
+                      <label className="text-[11px] font-bold text-slate-800 uppercase">{t("Breedte (mm)")}</label>
                       <NumberInput value={breedte} onChange={setBreedte} className="w-full border p-2.5 rounded-lg text-sm" />
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-800 uppercase">Hoogte (mm)</label>
+                      <label className="text-[11px] font-bold text-slate-800 uppercase">{t("Hoogte (mm)")}</label>
                       <NumberInput value={hoogte} onChange={setHoogte} className="w-full border p-2.5 rounded-lg text-sm" />
                     </div>
                   </div>
                   {grenzen && (
                     <p className="mt-1.5 text-[11px] text-slate-700">
-                      Breedte {nl(grenzen.minB)} tot {nl(grenzen.maxB)} mm, hoogte {nl(grenzen.minH)} tot {nl(grenzen.maxH)} mm.
+                      {t("Breedte {a} tot {b} mm, hoogte {c} tot {d} mm.", { a: nl(grenzen.minB), b: nl(grenzen.maxB), c: nl(grenzen.minH), d: nl(grenzen.maxH) })}
                     </p>
                   )}
                   {extra && (
                     <div className="mt-2">
                       <label className="text-[11px] font-bold text-slate-800 uppercase">
-                        {extra.label} (mm){extra.min !== undefined && extra.max !== undefined ? `, ${extra.min} tot ${extra.max}` : ""}
+                        {t(extra.label)} (mm){extra.min !== undefined && extra.max !== undefined ? `, ${t("{a} tot {b}", { a: extra.min, b: extra.max })}` : ""}
                       </label>
                       <NumberInput value={extraMaat} onChange={setExtraMaat} className="w-full border p-2.5 rounded-lg text-sm" />
                     </div>
@@ -1104,12 +1108,12 @@ export function KozijnConfigurator({
                   {(buitenMaat || extraBuiten) && (
                     <p role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                       {buitenMaat && grenzen
-                        ? `Deze maat kan niet standaard besteld worden. Kies een breedte van ${nl(grenzen.minB)} tot ${nl(grenzen.maxB)} mm en een hoogte van ${nl(grenzen.minH)} tot ${nl(grenzen.maxH)} mm, of neem contact met ons op voor maatwerk.`
-                        : `${extra?.label} kan niet standaard besteld worden. Kies ${extra?.min} tot ${extra?.max} mm.`}
+                        ? t("Deze maat kan niet standaard besteld worden. Kies een breedte van {a} tot {b} mm en een hoogte van {c} tot {d} mm, of neem contact met ons op voor maatwerk.", { a: nl(grenzen.minB), b: nl(grenzen.maxB), c: nl(grenzen.minH), d: nl(grenzen.maxH) })
+                        : t("{x} kan niet standaard besteld worden. Kies {a} tot {b} mm.", { x: t(extra?.label ?? ""), a: extra?.min ?? "", b: extra?.max ?? "" })}
                     </p>
                   )}
                   <p className="mt-1.5 text-[11px] text-slate-700">
-                    Buitenwerks. Binnenwerks: {binnenwerksBreedte} × {binnenwerkseHoogte} mm
+                    {t("Buitenwerks. Binnenwerks: {b} × {h} mm", { b: binnenwerksBreedte, h: binnenwerkseHoogte })}
                   </p>
                 </FormField>
 
@@ -1135,7 +1139,7 @@ export function KozijnConfigurator({
 
                 <FormField
                   label="Kleur"
-                  value={alu ? `${kn("kleurBuiten", aluKeuzes.kleurBuiten)} · ${kn("kleurBinnen", aluKeuzes.kleurBinnen)}` : `${KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant)?.naam.replace(/ \(RAL.*\)/, "") ?? ""} · ${kn("kleurBinnen", kleur)}`}>
+                  value={alu ? `${kn("kleurBuiten", aluKeuzes.kleurBuiten)} · ${kn("kleurBinnen", aluKeuzes.kleurBinnen)}` : `${t(KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant)?.naam.replace(/ \(RAL.*\)/, "") ?? "")} · ${kn("kleurBinnen", kleur)}`}>
                   <div className="space-y-3">
                     {alu ? (
                       <>
@@ -1146,8 +1150,8 @@ export function KozijnConfigurator({
                       </>
                     ) : (
                       <>
-                        <div role="group" aria-label="Kleur buitenkant">
-                          <label className="text-[11px] font-bold text-slate-800 uppercase">Kleur buitenkant</label>
+                        <div role="group" aria-label={t("Kleur buitenkant")}>
+                          <label className="text-[11px] font-bold text-slate-800 uppercase">{t("Kleur buitenkant")}</label>
                           <div className="mt-1 flex flex-wrap gap-2">
                             {KOZIJN_KLEUREN.map((k) => (
                               <button
@@ -1157,8 +1161,8 @@ export function KozijnConfigurator({
                                 onClick={() => setKleurBuitenkant(k.id)}
                                 className={`${keuze(k.id === kleurBuitenkant)} flex min-h-9 items-center gap-1.5 px-2.5 sm:min-h-10 sm:px-3`}>
                                 <span className="size-4 shrink-0 rounded-full ring-1 ring-black/20 ring-inset" style={{ backgroundColor: k.hex }} />
-                                <span className="sm:hidden">{k.naam.replace(/ \(RAL.*\)/, "")}</span>
-                                <span className="hidden sm:inline">{k.naam}</span>
+                                <span className="sm:hidden">{t(k.naam.replace(/ \(RAL.*\)/, ""))}</span>
+                                <span className="hidden sm:inline">{t(k.naam.replace(/ \(RAL.*\)/, ""))}{k.naam.match(/ \(RAL.*\)/)?.[0] ?? ""}</span>
                               </button>
                             ))}
                           </div>
@@ -1171,7 +1175,7 @@ export function KozijnConfigurator({
 
                 <FormField
                   label="Vulling"
-                  value={[...(alu ? [kn("glas", aluKeuzes.glas)] : [kn("glas", glas), kn("roeden", roeden)]), horAantal > 0 ? `${horAantal} ${horAantal === 1 ? "hor" : "horren"}` : ""].filter(Boolean).join(" · ")}>
+                  value={[...(alu ? [kn("glas", aluKeuzes.glas)] : [kn("glas", glas), kn("roeden", roeden)]), horAantal > 0 ? `${horAantal} ${horAantal === 1 ? t("hor") : t("horren")}` : ""].filter(Boolean).join(" · ")}>
                   <div className="space-y-3">
                     {alu ? (
                       selAlu("glas")
@@ -1190,7 +1194,7 @@ export function KozijnConfigurator({
                     )}
                     {horPrijs > 0 && (
                       <div>
-                        <label className="text-[11px] font-bold text-slate-800 uppercase">Hor</label>
+                        <label className="text-[11px] font-bold text-slate-800 uppercase">{t("Hor")}</label>
                         <div className="mt-1 flex items-center gap-3">
                           <button type="button" onClick={() => setHorAantal(Math.max(0, horAantal - 1))} className="w-10 h-10 rounded-lg border-2 border-slate-400 text-xl font-bold text-slate-900 hover:bg-slate-100">
                             −
@@ -1199,7 +1203,7 @@ export function KozijnConfigurator({
                           <button type="button" onClick={() => setHorAantal(Math.min(20, horAantal + 1))} className="w-10 h-10 rounded-lg border-2 border-slate-400 text-xl font-bold text-slate-900 hover:bg-slate-100">
                             +
                           </button>
-                          <span className="text-sm text-slate-600">{horAantal === 1 ? "hor" : "horren"}</span>
+                          <span className="text-sm text-slate-600">{horAantal === 1 ? t("hor") : t("horren")}</span>
                         </div>
                       </div>
                     )}
@@ -1226,7 +1230,7 @@ export function KozijnConfigurator({
                   </div>
                 </FormField>
 
-                <FormField label="Aantal" value={`${aantal} stuks`}>
+                <FormField label="Aantal" value={t("{n} stuks", { n: aantal })}>
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={() => setAantal(Math.max(1, aantal - 1))} className="w-10 h-10 rounded-lg border-2 border-slate-400 text-xl font-bold text-slate-900 hover:bg-slate-100">
                       −
@@ -1241,10 +1245,10 @@ export function KozijnConfigurator({
 
               {!voorbeeld && !montageApart && heeftMontage && (
                 <ul className="space-y-1 rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800">
-                  {["Montage door eigen monteurs", "Afval wordt voor je afgevoerd", "Eén totaalprijs, geen aparte rekening voor montage"].map((t) => (
-                    <li key={t} className="flex items-center gap-2">
+                  {["Montage door eigen monteurs", "Afval wordt voor je afgevoerd", "Eén totaalprijs, geen aparte rekening voor montage"].map((r) => (
+                    <li key={r} className="flex items-center gap-2">
                       <span aria-hidden="true">✓</span>
-                      {t}
+                      {t(r)}
                     </li>
                   ))}
                 </ul>
@@ -1255,12 +1259,12 @@ export function KozijnConfigurator({
                   onClick={() => handleAdd()}
                   disabled={buitenMaat || extraBuiten}
                   className="hidden lg:block lg:sticky lg:bottom-4 z-20 shadow-xl shadow-black/20 w-full bg-brand text-white py-4 rounded-lg font-bold uppercase text-[11px] tracking-widest hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:hover:bg-brand">
-                  Toevoegen aan offerte
+                  {t("Toevoegen aan offerte")}
                 </button>
               )}
               {!voorbeeld && (
                 <p className="text-center text-[11px] text-slate-600">
-                  Ontvang uw subsidie-indicatie bij de offerte
+                  {t("Ontvang uw subsidie-indicatie bij de offerte")}
                 </p>
               )}
             </div>
@@ -1297,19 +1301,19 @@ export function KozijnConfigurator({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Preview van je kozijn"
+          aria-label={t("Preview van je kozijn")}
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-3 backdrop-blur-[2px] sm:items-center"
           onClick={() => setPreviewOpen(false)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-slate-900">{alu ? "Aluminium " : ""}{kozijn.name}</p>
+                <p className="text-sm font-bold text-slate-900">{alu ? `${t("Aluminium")} ` : ""}{t(kozijn.name)}</p>
                 <p className="text-xs text-slate-700">
-                  {breedte} × {hoogte} mm{!alu && KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant) ? ` · ${KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant)!.naam}` : ""}
+                  {breedte} × {hoogte} mm{!alu && KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant) ? ` · ${t(KOZIJN_KLEUREN.find((k) => k.id === kleurBuitenkant)!.naam)}` : ""}
                 </p>
               </div>
-              <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Sluiten" className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                Sluiten
+              <button type="button" onClick={() => setPreviewOpen(false)} aria-label={t("Sluiten")} className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                {t("Sluiten")}
               </button>
             </div>
             {!alu ? (
@@ -1328,7 +1332,7 @@ export function KozijnConfigurator({
                 <GevelKeuze slug={slug} kleur={kleurBuitenkant} gevel={gevel} onGevel={setGevel} />
               </div>
             ) : (
-              <p className="mt-3 text-xs text-slate-700">Een foto op een gevel is er nog niet voor dit kozijn. Dit is de tekening.</p>
+              <p className="mt-3 text-xs text-slate-700">{t("Een foto op een gevel is er nog niet voor dit kozijn. Dit is de tekening.")}</p>
             )}
           </div>
         </div>
@@ -1339,12 +1343,12 @@ export function KozijnConfigurator({
       {/* Telefoon: prijs en knop altijd in beeld */}
       <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 lg:hidden">
         <div>
-          <span className="block text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? " · incl. btw" : " · excl. btw") : ""}</span>
+          <span className="block text-[10px] text-slate-600 uppercase tracking-widest">{prijsLabel}{standaard ? (metBtw ? ` · ${t("incl. btw")}` : ` · ${t("excl. btw")}`) : ""}</span>
           <span className="text-xl font-semibold text-slate-800 tabular-nums">€ {prijsTekst}</span>
-          {standaard && <span className="block text-[11px] font-medium text-slate-700">{heeftMontage ? "Incl. montage" : "Zonder montage"} · {metBtw ? "incl." : "excl."} btw</span>}
+          {standaard && <span className="block text-[11px] font-medium text-slate-700">{heeftMontage ? t("Incl. montage") : t("Zonder montage")} · {metBtw ? t("incl. btw") : t("excl. btw")}</span>}
           {montageApart && montageBedrag > 0 && (
             <span className="block text-[10px] text-slate-600">
-              kozijn € {bedragTekst(Math.round((berekendePrijs - montageBedrag) * 100) / 100)} + montage € {bedragTekst(montageBedrag)}
+              {t("kozijn")} € {bedragTekst(Math.round((berekendePrijs - montageBedrag) * 100) / 100)} + {t("montage")} € {bedragTekst(montageBedrag)}
             </span>
           )}
         </div>
@@ -1352,14 +1356,14 @@ export function KozijnConfigurator({
           onClick={() => handleAdd()}
           disabled={buitenMaat || extraBuiten}
           className="bg-brand text-white px-5 py-3 rounded-lg font-bold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:hover:bg-brand">
-          Toevoegen
+          {t("Toevoegen")}
         </button>
       </div>
 
       <CartAddedModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        product={kozijn.name}
+        product={t(kozijn.name)}
         breedte={breedte}
         hoogte={hoogte}
         aantal={aantal}

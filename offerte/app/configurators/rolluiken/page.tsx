@@ -5,6 +5,7 @@ import { KozijnTechnisch, TECHNISCH } from "@/app/components/KozijnTechnisch";
 import { ROLLUIK_BEGINMATEN } from "@/lib/rolluiken";
 import { RolluikSVG, InbouwRolluikSVG, ScreenSVG } from "@/lib/rolluik-svgs";
 
+import { useT } from "@/app/components/TaalContext";
 const producten = [
   {
     id: 1,
@@ -33,6 +34,7 @@ const producten = [
 ];
 
 export default function RolluikenOverzicht() {
+  const t = useT();
   const [activeType, setActiveType] = useState<string | null>(null);
   const zichtbaar = activeType ? producten.filter(p => p.slug === activeType) : producten;
 
@@ -44,7 +46,7 @@ export default function RolluikenOverzicht() {
             Rolluiken &amp; screens
           </h1>
           <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">
-            Kies je type
+            {t("Kies je type")}
           </p>
         </div>
         <div className="flex bg-[#f4f7f9] p-1 rounded-xl flex-wrap gap-1">
@@ -55,7 +57,7 @@ export default function RolluikenOverzicht() {
               className={`px-4 py-2.5 text-xs md:text-sm font-bold rounded-lg transition-all ${
                 activeType === p.slug ? "bg-brand text-white shadow-md" : "text-[#666666]"
               }`}>
-              {p.name}
+              {t(p.name)}
             </button>
           ))}
         </div>
@@ -66,7 +68,7 @@ export default function RolluikenOverzicht() {
           <Link href={`/rolluikconfigurator/${item.slug}`} key={item.id} className="group flex flex-col h-full">
             <div className="relative aspect-square bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center p-6 md:p-8 shadow-sm group-hover:shadow-md transition-shadow overflow-hidden">
               {item.best && (
-                <div className="absolute top-3 left-3 bg-brand text-white text-[9px] font-black px-3 py-1.5 rounded-full tracking-widest z-10 uppercase">POPULAIR</div>
+                <div className="absolute top-3 left-3 bg-brand text-white text-[9px] font-black px-3 py-1.5 rounded-full tracking-widest z-10 uppercase">{t("POPULAIR")}</div>
               )}
               <div className="flex h-full w-full items-center justify-center">
                 <KozijnTechnisch
@@ -79,8 +81,8 @@ export default function RolluikenOverzicht() {
               </div>
             </div>
             <div className="mt-3 px-1">
-              <p className="font-bold text-[#2d3748] text-sm md:text-base">{item.name}</p>
-              <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+              <p className="font-bold text-[#2d3748] text-sm md:text-base">{t(item.name)}</p>
+              <p className="text-xs text-slate-500 mt-1">{t(item.description)}</p>
             </div>
           </Link>
         ))}

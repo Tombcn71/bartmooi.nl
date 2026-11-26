@@ -1,11 +1,13 @@
 "use client";
 import { Calculator, Ruler } from "lucide-react";
+import { useT } from "@/app/components/TaalContext";
 
 /**
  * Welkomscherm voor de klant: kop, een kort verhaal over hoe het werkt, en de knop (zonder te scrollen in beeld).
  * In inmeetmodus (Bart zelf bij de klant): het meetlatje en een korte uitleg voor hem.
  */
 export function WelkomScherm({ onStart, inmeten = false }: { onStart: () => void; inmeten?: boolean }) {
+  const t = useT();
   return (
     <div className="relative isolate overflow-hidden bg-brand-dark">
       <div aria-hidden className="pointer-events-none absolute -top-32 -left-24 -z-10 size-96 rounded-full bg-brand/60 blur-3xl" />
@@ -24,10 +26,9 @@ export function WelkomScherm({ onStart, inmeten = false }: { onStart: () => void
           </>
         ) : (
           <>
-            <h1 className="text-4xl leading-[1.1] font-bold tracking-tight text-white md:text-5xl">Bereken jouw prijs</h1>
+            <h1 className="text-4xl leading-[1.1] font-bold tracking-tight text-white md:text-5xl">{t("Bereken jouw prijs")}</h1>
             <p className="mt-5 text-base leading-relaxed text-white/85 md:text-lg">
-              Stel je kozijn samen en zie direct wat het kost. Wissel met één knop naar de fotoweergave en zie hoe het kozijn
-              er realistisch op je gevel uitziet. De offerte ontvang je direct in je mail.
+              {t("Stel je kozijn samen en zie direct wat het kost. Wissel met één knop naar de fotoweergave en zie hoe het kozijn er realistisch op je gevel uitziet. De offerte ontvang je direct in je mail.")}
             </p>
           </>
         )}
@@ -36,7 +37,7 @@ export function WelkomScherm({ onStart, inmeten = false }: { onStart: () => void
           type="button"
           onClick={onStart}
           className="mt-9 w-full rounded-full bg-white px-10 py-4 text-base font-bold text-brand-text shadow-xl shadow-black/20 transition hover:scale-[1.02] active:scale-[0.98] sm:w-auto">
-          Aan de slag
+          {inmeten ? "Aan de slag" : t("Aan de slag")}
         </button>
       </div>
     </div>

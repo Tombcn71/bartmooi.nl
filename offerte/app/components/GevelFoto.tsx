@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image, { getImageProps } from "next/image";
+import { useT } from "@/app/components/TaalContext";
 
 const GEVELS = [
   { id: "rood", naam: "Rode steen" },
@@ -101,11 +102,12 @@ export function GevelKeuze({
   gevel: GevelId;
   onGevel: (g: GevelId) => void;
 }) {
+  const t = useT();
   if (!heeftGevelFoto(slug, kleur)) return null;
   return (
     <div>
-      <div role="group" aria-label="Gevel" className="">
-        <p className="mb-1.5 text-xs font-bold text-slate-800">Kies je gevel</p>
+      <div role="group" aria-label={t("Gevel")} className="">
+        <p className="mb-1.5 text-xs font-bold text-slate-800">{t("Kies je gevel")}</p>
         <div className="grid grid-cols-3 gap-2">
           {GEVELS.map((g) => (
             <button
@@ -120,7 +122,7 @@ export function GevelKeuze({
               <span className="relative mb-1 block aspect-16/9 overflow-hidden rounded-[5px] bg-slate-100">
                 <Image src={fotoPad(g.id, slug, kleur)} alt="" fill sizes={TEGEL_SIZES} className="object-cover" />
               </span>
-              {g.naam}
+              {t(g.naam)}
             </button>
           ))}
         </div>

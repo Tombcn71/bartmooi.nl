@@ -5,6 +5,7 @@ import { KozijnTechnisch, TECHNISCH } from "@/app/components/KozijnTechnisch";
 import { HOR_BEGINMATEN } from "@/lib/horren";
 import { InzethorSVG, KlemhorSVG, PlisseHordeurSVG } from "@/lib/hor-svgs";
 
+import { useT } from "@/app/components/TaalContext";
 const horren = [
   {
     id: 1,
@@ -33,6 +34,7 @@ const horren = [
 ];
 
 export default function HorrenOverzicht() {
+  const t = useT();
   const [activeType, setActiveType] = useState<string | null>(null);
 
   const zichtbaar = activeType ? horren.filter(h => h.slug === activeType) : horren;
@@ -42,10 +44,10 @@ export default function HorrenOverzicht() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-10 border-l-4 border-brand pl-4 md:pl-6">
         <div className="mb-6 lg:mb-0">
           <h1 className="text-2xl md:text-4xl font-bold text-[#1a1a1a] mb-1 md:mb-3 tracking-tight">
-            Kunststof horren
+            {t("Kunststof horren")}
           </h1>
           <p className="text-brand-text font-medium text-sm md:text-xl uppercase tracking-tighter">
-            Kies je hortype
+            {t("Kies je hortype")}
           </p>
         </div>
         <div className="flex bg-[#f4f7f9] p-1 rounded-xl">
@@ -67,7 +69,7 @@ export default function HorrenOverzicht() {
           <Link href={`/horrenconfigurateur/${item.slug}`} key={item.id} className="group flex flex-col h-full">
             <div className="relative aspect-[3/4] bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center p-6 md:p-8 shadow-sm group-hover:shadow-md transition-shadow overflow-hidden">
               {item.best && (
-                <div className="absolute top-3 left-3 bg-brand text-white text-[9px] font-black px-3 py-1.5 rounded-full tracking-widest z-10 uppercase">POPULAIR</div>
+                <div className="absolute top-3 left-3 bg-brand text-white text-[9px] font-black px-3 py-1.5 rounded-full tracking-widest z-10 uppercase">{t("POPULAIR")}</div>
               )}
               <div className="flex h-full w-full items-center justify-center">
                 <KozijnTechnisch
@@ -80,8 +82,8 @@ export default function HorrenOverzicht() {
               </div>
             </div>
             <div className="mt-3 px-1">
-              <p className="font-bold text-[#2d3748] text-sm md:text-base">{item.name}</p>
-              <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+              <p className="font-bold text-[#2d3748] text-sm md:text-base">{t(item.name)}</p>
+              <p className="text-xs text-slate-500 mt-1">{t(item.description)}</p>
             </div>
           </Link>
         ))}

@@ -8,6 +8,9 @@ import { FOTO_GEVELS, FOTO_TYPES, fotoKleurVan, kozijnFotoPad } from "@/lib/kozi
 import { getSvgString } from "@/lib/renderSvgForPdf";
 import { btwTekst, buildItemSpecs } from "@/app/lib/generate-offerte-pdf";
 import { OfferteWeergave, type OfferteItemWeergave } from "./offerte-weergave";
+import { TaalProvider } from "@/app/components/TaalContext";
+import { getTaal } from "@/lib/taal-server";
+import { isTaal, vertaal, LOCALE } from "@/lib/taal";
 
 export const metadata: Metadata = { title: "Uw offerte", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -21,6 +24,9 @@ export default async function OffertePagina({ params }: { params: Promise<{ id: 
   if (!offerte) notFound();
 
   const data = offerte.data as any;
+  // De offerte staat in de taal waarin de klant hem aanvroeg (ook als de link later uit de mail wordt geopend).
+  const taal = isTaal(data.taal) ? data.taal : await getTaal();
+  const loc = LOCALE[taal];
   const items: Item[] =
     Array.isArray(data.items) && data.items.length > 0
       ? data.items
@@ -58,13 +64,14 @@ export default async function OffertePagina({ params }: { params: Promise<{ id: 
   });
 
   const totaal = weergave.reduce((s, i) => s + i.prijs, 0);
-  const intro = "Hartelijk dank voor uw aanvraag. Hieronder vindt u uw offerte.";
+  const intro = vertaal(taal, "Hartelijk dank voor uw aanvraag. Hieronder vindt u uw offerte.");
 
   const aanvraag = offerte.createdAt ?? new Date();
-  const fmt = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Amsterdam" });
+  const fmt = (d: Date) => d.toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Amsterdam" });
   const akkoordOp = data.acceptedAt ? new Date(data.acceptedAt) : null;
 
   return (
+    <TaalProvider taal={taal}>
     <div className="min-h-screen bg-[#f1f5f9] pb-28">
       <OfferteWeergave
         offerteId={offerte.id}
@@ -82,11 +89,12 @@ export default async function OffertePagina({ params }: { params: Promise<{ id: 
           akkoordOp
             ? {
                 door: data.acceptedByNaam ?? data.naam ?? "",
-                op: akkoordOp.toLocaleString("nl-NL", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Amsterdam" }),
+                op: akkoordOp.toLocaleString(loc, { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Amsterdam" }),
               }
             : null
         }
       />
     </div>
+    </TaalProvider>
   );
 }

@@ -74,11 +74,13 @@ function naamVan(i: Item) {
   return KOZIJN_TYPEN.find((t) => t.slug === i.type)?.naam ?? (i.product && ROOS_PRODUCTEN[i.product]?.typen[i.type]) ?? i.type;
 }
 
-function linkVoor(items: Item[]) {
+function linkVoor(items: Item[], taal?: string) {
   const [eerste, ...rest] = items;
   const meer = rest.map((i) => `${i.n} × ${naamVan(i)} ${i.b} bij ${i.h} mm${i.glas === "triple" ? " triple glas" : ""}`).join("; ");
   const inv = { type: eerste.type, product: eerste.product, breedte_mm: eerste.b, hoogte_mm: eerste.h, aantal: eerste.n, glas: eerste.glas, kleur_buiten: eerste.kleur, andere_producten: meer };
-  return eerste.t === "k" ? offerteLink(inv) : productLink(inv);
+  const link = eerste.t === "k" ? offerteLink(inv) : productLink(inv);
+  // De calculator opent in de taal van de chat (Nederlands blijft zonder extra parameter).
+  return taal && taal !== "nl" && ["en", "de", "pl"].includes(taal) ? `${link}${link.includes("?") ? "&" : "?"}lang=${taal}` : link;
 }
 
 export async function POST(req: Request) {
@@ -103,13 +105,13 @@ export async function POST(req: Request) {
   const bekend = itemsUitGesprek(alleTeksten);
   // "Dat is alles": meteen doorsturen naar Roos, zonder het model: sneller en altijd met de knop.
   if (bekend.length > 0 && /\b(dat is alles|dat was alles|dat was het|dat is het|klaar|doorsturen|naar roos)\b/i.test(laatsteKlant) && !/\?/.test(laatsteKlant))
-    return Response.json({ tekst: `Prima, ik zet u door naar mijn collega Roos, zij heeft uw offerte in minder dan een minuut klaar.\n\nHier gaat u naar Roos:\n${linkVoor(bekend)}` });
+    return Response.json({ tekst: `Prima, ik zet u door naar mijn collega Roos, zij heeft uw offerte in minder dan een minuut klaar.\n\nHier gaat u naar Roos:\n${linkVoor(bekend, body.taal)}` });
   if (bekend.length > 0 && /(to wszystko|to ju[zż] wszystko|to ju[zż] to)/i.test(laatsteKlant) && !/\?/.test(laatsteKlant))
-    return Response.json({ tekst: `Świetnie, przekazuję Pana/Panią mojej koleżance Roos. To nasza asystentka AI i w mniej niż minutę przygotuje ofertę, rozmawiając po niderlandzku.\n\nHier gaat u naar Roos:\n${linkVoor(bekend)}` });
+    return Response.json({ tekst: `Świetnie, przekazuję Pana/Panią mojej koleżance Roos. To nasza asystentka AI i w mniej niż minutę przygotuje ofertę, rozmawiając po niderlandzku.\n\nHier gaat u naar Roos:\n${linkVoor(bekend, body.taal)}` });
   if (bekend.length > 0 && /\b(das ist alles|das war alles|das ist es|das w[aä]re alles)\b/i.test(laatsteKlant) && !/\?/.test(laatsteKlant))
-    return Response.json({ tekst: `Gut, ich leite Sie an meine Kollegin Roos weiter. Sie ist unsere KI-Assistentin und hat Ihr Angebot in weniger als einer Minute fertig, im Gespräch auf Niederländisch.\n\nHier gaat u naar Roos:\n${linkVoor(bekend)}` });
+    return Response.json({ tekst: `Gut, ich leite Sie an meine Kollegin Roos weiter. Sie ist unsere KI-Assistentin und hat Ihr Angebot in weniger als einer Minute fertig, im Gespräch auf Niederländisch.\n\nHier gaat u naar Roos:\n${linkVoor(bekend, body.taal)}` });
   if (bekend.length > 0 && /\b(that'?s all|that is all|that'?s it|that is it|nothing else)\b/i.test(laatsteKlant) && !/\?/.test(laatsteKlant))
-    return Response.json({ tekst: `Great, I'll pass you on to my colleague Roos. She is our AI assistant and will have your quote ready in under a minute, in a conversation in Dutch.\n\nHier gaat u naar Roos:\n${linkVoor(bekend)}` });
+    return Response.json({ tekst: `Great, I'll pass you on to my colleague Roos. She is our AI assistant and will have your quote ready in under a minute, in a conversation in Dutch.\n\nHier gaat u naar Roos:\n${linkVoor(bekend, body.taal)}` });
   if (!berichten.length || berichten[berichten.length - 1].role !== "user") return Response.json({ fout: "Stel een vraag." }, { status: 400 });
   try {
     const client = new Anthropic({ apiKey: key });
@@ -153,6 +155,9 @@ export async function POST(req: Request) {
     tekst = tekst.replace(/\[Tool call:[^\]]*\]/gi, "").replace(/\[\[item:.*?\]\]/g, "").trim();
     // Verborgen merktekens (worden in de chat niet getoond) zodat een volgende beurt weet wat er is uitgerekend.
     const nieuw = nieuweItems.filter((i, x) => nieuweItems.findIndex((j) => JSON.stringify(j) === JSON.stringify(i)) === x);
+    // Links naar de calculator openen in de taal van de chat.
+    if (body.taal && ["en", "de", "pl"].includes(body.taal))
+      tekst = tekst.replace(/https?:\/\/[^\s)\]]*uitchat=1[^\s)\]]*/g, (u) => (/[?&]lang=/.test(u) ? u : `${u}&lang=${body.taal}`));
     // Vaste vragen en keuzeknoppen altijd in de taal van de bezoeker, ook als het model ze in het Nederlands overneemt.
     if (woordenlijst) {
       const paren = woordenlijst.split(/;\s*|,\s*(?=[^,=]+=)/).map((x) => x.split("=").map((y) => y.trim())).filter((x) => x.length === 2 && x[0] && x[1]).sort((a, b) => b[0].length - a[0].length);

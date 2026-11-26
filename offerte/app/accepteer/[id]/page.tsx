@@ -2,11 +2,15 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 
+import { useT, useTaal } from "@/app/components/TaalContext";
+import { LOCALE } from "@/lib/taal";
 function clean(s?: string) {
   return s?.replace(/-/g, " ").replace(/creon /gi, "").trim() ?? "";
 }
 
 export default function AccepteerOfferte() {
+  const t = useT();
+  const loc = LOCALE[useTaal()];
   const { id } = useParams();
   const offerteId = typeof id === "string" ? id : "";
 
@@ -40,13 +44,13 @@ export default function AccepteerOfferte() {
         headers: { "Content-Type": "application/json" },
       });
       if (res.ok) {
-        setAcceptDatum(new Date().toLocaleString("nl-NL", { dateStyle: "long", timeStyle: "short" }));
+        setAcceptDatum(new Date().toLocaleString(loc, { dateStyle: "long", timeStyle: "short" }));
         setStatus("done");
       } else setStatus("error");
     } catch { setStatus("error"); }
   }
 
-  const datum = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+  const datum = new Date().toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric" });
   const productNaam = offerte?.product || offerte?.kozijnNaam || offerte?.deurNaam || "product";
 
   // ── Bevestiging ──────────────────────────────────────────────────────────────
@@ -58,11 +62,11 @@ export default function AccepteerOfferte() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">Offerte geaccepteerd</h1>
-        <p className="text-slate-800 text-base mb-1">Geaccepteerd door <strong className="text-[#1a1a1a]">{naam}</strong></p>
+        <h1 className="text-xl font-bold text-[#1a1a1a] mb-2">{t("Offerte geaccepteerd")}</h1>
+        <p className="text-slate-800 text-base mb-1">{t("Geaccepteerd door")} <strong className="text-[#1a1a1a]">{naam}</strong></p>
         <p className="text-slate-700 text-sm mb-6">{acceptDatum}</p>
         <p className="text-base text-slate-800">
-          BartMooi neemt zo spoedig mogelijk contact met u op om de aanbetaling en planning te bespreken.
+          {t("BartMooi neemt zo spoedig mogelijk contact met u op om de aanbetaling en planning te bespreken.")}
         </p>
         <p className="text-sm text-slate-700 mt-8">Referentie: {offerteId}</p>
       </div>
@@ -73,8 +77,8 @@ export default function AccepteerOfferte() {
   if (notFound) return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center">
-        <p className="text-slate-800 mb-4">Deze offerte-link is niet geldig of verlopen.</p>
-        <a href="/" className="text-brand-text text-base font-semibold hover:underline">← Terug naar BartMooi</a>
+        <p className="text-slate-800 mb-4">{t("Deze offerte-link is niet geldig of verlopen.")}</p>
+        <a href="/" className="text-brand-text text-base font-semibold hover:underline">← {t("Terug naar BartMooi")}</a>
       </div>
     </div>
   );
@@ -82,7 +86,7 @@ export default function AccepteerOfferte() {
   // ── Laden ─────────────────────────────────────────────────────────────────────
   if (!geladen) return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-slate-700 text-base">Offerte ophalen...</p>
+      <p className="text-slate-700 text-base">{t("Offerte ophalen...")}</p>
     </div>
   );
 
@@ -108,7 +112,7 @@ export default function AccepteerOfferte() {
           <div className="px-10 py-8">
             {/* Datum + aanhef */}
             <p className="text-sm text-slate-700 mb-6">{datum}</p>
-            <p className="text-base text-slate-700 mb-1">Geachte <strong>{offerte?.naam || "klant"}</strong>,</p>
+            <p className="text-base text-slate-700 mb-1">{t("Geachte")} <strong>{offerte?.naam || t("klant")}</strong>,</p>
             {offerte?.telefoon && (
               <p className="text-sm text-slate-700 mb-2">
                 <a href={`tel:${offerte.telefoon}`} className="hover:text-brand-text">📞 {offerte.telefoon}</a>
@@ -116,14 +120,14 @@ export default function AccepteerOfferte() {
               </p>
             )}
             <p className="text-base text-slate-800 mb-4 leading-relaxed">
-              Hierbij ontvangt u de offerte voor uw aanvraag bij BartMooi B.V. Lees de specificaties zorgvuldig door en geef onderaan uw akkoord.
+              {t("Hierbij ontvangt u de offerte voor uw aanvraag bij BartMooi B.V. Lees de specificaties zorgvuldig door en geef onderaan uw akkoord.")}
             </p>
             <p className="text-base text-slate-800 mb-8 leading-relaxed">
-              Na akkoord komen wij eerst langs voor de <strong className="text-slate-700">officiële inmeting</strong>. Op basis daarvan stellen wij de officiële fabrieksspecificaties op, inclusief de benodigde documentatie voor eventuele subsidieaanvragen (ISDE-regeling).
+              {t("Na akkoord komen wij eerst langs voor de")} <strong className="text-slate-700">{t("officiële inmeting")}</strong>{t(". Op basis daarvan stellen wij de officiële fabrieksspecificaties op, inclusief de benodigde documentatie voor eventuele subsidieaanvragen (ISDE-regeling).")}
             </p>
 
             {/* Specificaties */}
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Offerte specificaties</h2>
+            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">{t("Offerte specificaties")}</h2>
             <div className="border border-slate-100 rounded-xl overflow-hidden mb-8">
               {(([
                 ["Product", productNaam],
@@ -133,43 +137,43 @@ export default function AccepteerOfferte() {
                 offerte?.kleur ? ["Kleur", clean(offerte.kleur)] : null,
                 offerte?.profiel ? ["Profiel", clean(offerte.profiel)] : null,
                 offerte?.beslag ? ["Beslag", clean(offerte.beslag)] : null,
-                offerte?.aantal ? ["Aantal", `${offerte.aantal} stuks`] : null,
+                offerte?.aantal ? ["Aantal", t("{n} stuks", { n: offerte.aantal })] : null,
               ] as ([string, string] | null)[]).filter((r): r is [string, string] => r !== null).map(([label, value], i, arr) => (
                 <div key={i} className={`flex px-5 py-3 text-base ${i < arr.length - 1 ? "border-b border-slate-50" : ""} ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
-                  <span className="w-40 text-slate-700 shrink-0">{label}</span>
-                  <span className="text-slate-800 font-medium">{value}</span>
+                  <span className="w-40 text-slate-700 shrink-0">{t(label)}</span>
+                  <span className="text-slate-800 font-medium">{label === "Product" ? String(value).split(" · ").map((d) => t(d)).join(" · ") : t(String(value))}</span>
                 </div>
               )))}
               <div className="flex px-5 py-3 text-base bg-slate-50">
-                <span className="w-40 text-slate-700 flex-shrink-0">Prijsindicatie</span>
+                <span className="w-40 text-slate-700 flex-shrink-0">{t("Prijsindicatie")}</span>
                 <span className="text-brand-text font-bold">
-                  € {offerte?.prijs?.toLocaleString("nl-NL", { minimumFractionDigits: 2 })} {Array.isArray(offerte?.items) && offerte.items.length > 0 && offerte.items.every((i: any) => i.specs?.klantType === "particulier") ? "incl. btw" : "excl. btw"}
+                  € {offerte?.prijs?.toLocaleString(loc, { minimumFractionDigits: 2 })} {t(Array.isArray(offerte?.items) && offerte.items.length > 0 && offerte.items.every((i: any) => i.specs?.klantType === "particulier") ? "incl. btw" : "excl. btw")}
                 </span>
               </div>
               {offerte?.subsidieIndicatie > 0 && (
                 <div className="flex px-5 py-3 text-base bg-white border-t border-slate-50">
-                  <span className="w-40 text-slate-700 flex-shrink-0">ISDE subsidie</span>
-                  <span className="text-green-700 font-medium">≈ € {offerte.subsidieIndicatie.toLocaleString("nl-NL")} indicatie</span>
+                  <span className="w-40 text-slate-700 flex-shrink-0">{t("ISDE subsidie")}</span>
+                  <span className="text-green-700 font-medium">≈ € {offerte.subsidieIndicatie.toLocaleString(loc)} {t("indicatie")}</span>
                 </div>
               )}
             </div>
 
             {/* Voorwaarden samenvatting */}
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Voorwaarden</h2>
+            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">{t("Voorwaarden")}</h2>
             <ul className="text-base text-slate-800 space-y-1.5 mb-8 leading-relaxed">
-              <li className="flex gap-2"><span className="text-slate-700">–</span> Betaling: 30% bij akkoord · 40% bij aanvang · 30% na oplevering.</li>
-              <li className="flex gap-2"><span className="text-slate-700">–</span> Levertijd circa 6 weken na aanbetaling.</li>
-              <li className="flex gap-2"><span className="text-slate-700">–</span> Garantie: 10 jaar kozijnen, 5 jaar hang- en sluitwerk, 2 jaar ventilatieroosters.</li>
-              <li className="flex gap-2"><span className="text-slate-700">–</span> Deze offerte is 30 dagen geldig.</li>
+              <li className="flex gap-2"><span className="text-slate-700">–</span> {t("Betaling: 30% bij akkoord · 40% bij aanvang · 30% na oplevering.")}</li>
+              <li className="flex gap-2"><span className="text-slate-700">–</span> {t("Levertijd circa 6 weken na aanbetaling.")}</li>
+              <li className="flex gap-2"><span className="text-slate-700">–</span> {t("Garantie: 10 jaar kozijnen, 5 jaar hang- en sluitwerk, 2 jaar ventilatieroosters.")}</li>
+              <li className="flex gap-2"><span className="text-slate-700">–</span> {t("Deze offerte is 30 dagen geldig.")}</li>
             </ul>
 
             {/* Acceptatie */}
             <div className="border-t border-slate-100 pt-8">
-              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-5">Digitaal akkoord</h2>
+              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-5">{t("Digitaal akkoord")}</h2>
 
               <div className="mb-5">
-                <label className="block text-base font-semibold text-slate-700 mb-2">Naam</label>
-                <input value={naam} onChange={e => setNaam(e.target.value)} placeholder="Voor- en achternaam"
+                <label className="block text-base font-semibold text-slate-700 mb-2">{t("Naam")}</label>
+                <input value={naam} onChange={e => setNaam(e.target.value)} placeholder={t("Voor- en achternaam")}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-brand" />
               </div>
 
@@ -179,17 +183,17 @@ export default function AccepteerOfferte() {
                   {akkoord && <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="2 6 5 9 10 3" /></svg>}
                 </div>
                 <span className="text-base text-slate-800 leading-relaxed">
-                  Ik heb de offerte gelezen en ga akkoord met de bovenstaande specificaties, prijsindicatie en betalingsvoorwaarden van BartMooi B.V.
+                  {t("Ik heb de offerte gelezen en ga akkoord met de bovenstaande specificaties, prijsindicatie en betalingsvoorwaarden van BartMooi B.V.")}
                 </span>
               </label>
 
               {status === "error" && (
-                <p className="text-base text-red-600 mb-4">Er is iets misgegaan. Probeer opnieuw.</p>
+                <p className="text-base text-red-600 mb-4">{t("Er is iets misgegaan. Probeer opnieuw.")}</p>
               )}
 
               <button disabled={!akkoord || !naam.trim() || status === "bezig"} onClick={handleAccept}
                 className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand-dark transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                {status === "bezig" ? "Verwerken..." : "Offerte accepteren"}
+                {status === "bezig" ? t("Verwerken...") : t("Offerte accepteren")}
               </button>
             </div>
           </div>

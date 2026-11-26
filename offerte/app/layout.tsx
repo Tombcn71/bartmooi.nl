@@ -7,6 +7,9 @@ import { InmeetBalk } from "./components/InmeetBalk";
 import { NavGate } from "./components/NavGate";
 import { AssistentGlobaal } from "./components/AssistentGlobaal";
 import { Telling } from "./components/Telling";
+import { headers } from "next/headers";
+import { TaalProvider } from "./components/TaalContext";
+import { naarTaal } from "@/lib/taal";
 
 // Huisstijl bartmooi.nl
 const overpass = Overpass({
@@ -29,11 +32,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const taal = naarTaal((await headers()).get("x-bm-taal"));
   return (
     <html
-      lang="nl"
+      lang={taal}
       className={`${overpass.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        <TaalProvider taal={taal}>
         <NavGate>
           <Navbar />
           <InmeetBalk />
@@ -44,6 +49,7 @@ export default async function RootLayout({
         <CenterToast />
         <AssistentGlobaal />
         <Telling />
+        </TaalProvider>
       </body>
     </html>
   );

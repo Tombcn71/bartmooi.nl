@@ -559,7 +559,7 @@ function projectSignaal(p: string, prijs: number | undefined, eind: string | und
 
 function Planbord({ plan, zetPlan, data }: ReturnType<typeof usePlanning> & { data: Record<string, Week> }) {
   const { team, leden } = useTeam();
-  const { projecten: alleProjecten, info, periode } = useProjecten();
+  const { projecten: alleProjecten, periode } = useProjecten();
   const [prijs] = useProjectPrijs();
   const signaal = Object.fromEntries(alleProjecten.map((p) => [p, projectSignaal(p, prijs[p], periode[p]?.eind, data, plan, leden)]));
   const aandacht = alleProjecten.filter((p) => signaal[p].kleur === "oranje" || signaal[p].kleur === "rood");
@@ -610,7 +610,7 @@ function Planbord({ plan, zetPlan, data }: ReturnType<typeof usePlanning> & { da
           <tbody>
             {projecten.map((klant) => (
               <tr key={klant} className="border-b border-slate-100 last:border-0">
-                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{periodeTekst(periode[klant]) && <span className="mt-1 block text-xs font-semibold text-[#1E5079]">{periodeTekst(periode[klant])}</span>}{signaal[klant] && signaal[klant].kleur !== "geen" && <span className={`mt-1 flex items-start gap-1.5 text-xs font-medium ${{ groen: "text-green-700", oranje: "text-amber-700", rood: "text-red-600" }[signaal[klant].kleur as "groen"]}`}><span className={`mt-1 size-2 shrink-0 rounded-full ${{ groen: "bg-green-500", oranje: "bg-amber-500", rood: "bg-red-500" }[signaal[klant].kleur as "groen"]}`} />{signaal[klant].reden}</span>}{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
+                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{periodeTekst(periode[klant]) && <span className="mt-1 block text-xs font-semibold text-[#1E5079]">{periodeTekst(periode[klant])}</span>}{signaal[klant] && signaal[klant].kleur !== "geen" && <span className={`mt-1 flex items-start gap-1.5 text-xs font-medium ${{ groen: "text-green-700", oranje: "text-amber-700", rood: "text-red-600" }[signaal[klant].kleur as "groen"]}`}><span className={`mt-1 size-2 shrink-0 rounded-full ${{ groen: "bg-green-500", oranje: "bg-amber-500", rood: "bg-red-500" }[signaal[klant].kleur as "groen"]}`} />{signaal[klant].reden}</span>}</td>
                 {dagen.map((_, d) => {
                   const wie = team.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
                   const dagIso = (() => { const x = new Date(maandag); x.setDate(x.getDate() + d); return isoDag(x); })();

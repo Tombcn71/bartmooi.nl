@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
 import { Check, ChevronLeft, ChevronRight, Download, HardHat, Plus, Send, UserCog } from "lucide-react";
 
 /*
@@ -80,9 +81,9 @@ export default function Start() {
   if (!rol) return <Inloggen taal={taal} setTaal={setTaal} kies={setRol} />;
 
   return rol.soort === "monteur" ? (
-    <Monteur naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
+    <MonteurOmgeving naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
   ) : (
-    <Bart terug={() => setRol(null)} {...opslag} />
+    <KantoorOmgeving terug={() => setRol(null)} {...opslag} />
   );
 }
 
@@ -129,6 +130,86 @@ function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => v
         </form>
       )}
     </main>
+  );
+}
+
+/* ---------- tabbladen ---------- */
+function Tabs<T extends string>({ tabs, actief, zet }: { tabs: [T, string][]; actief: T; zet: (t: T) => void }) {
+  return (
+    <nav className="sticky top-0 z-10 -mx-4 flex gap-1 bg-[#f4f6f8]/95 px-4 py-2 backdrop-blur">
+      {tabs.map(([id, naam]) => (
+        <button key={id} onClick={() => zet(id)} className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold ${actief === id ? "bg-[#1E5079] text-white" : "bg-white text-slate-700 shadow-sm"}`}>{naam}</button>
+      ))}
+    </nav>
+  );
+}
+
+function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag>) {
+  const [tab, setTab] = useState<"uren" | "overzicht" | "cert">("uren");
+  const pl = p.taal === "pl";
+  const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
+  return (
+    <div>
+      <div className="mx-auto max-w-md px-4 pt-4"><Tabs tabs={tabs} actief={tab} zet={setTab} /></div>
+      {tab === "uren" && <Monteur {...p} />}
+      {tab === "overzicht" && <main className="mx-auto max-w-md p-4"><MijnOverzicht naam={p.naam} taal={p.taal} data={p.data} /></main>}
+      {tab === "cert" && <main className="mx-auto max-w-md p-4"><MijnCertificaten naam={p.naam} pl={pl} /></main>}
+    </div>
+  );
+}
+
+function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag>) {
+  const [tab, setTab] = useState<"uren" | "cert">("uren");
+  return (
+    <div>
+      <div className="mx-auto max-w-5xl px-4 pt-4 md:px-8"><Tabs tabs={[["uren", "Uren"], ["cert", "Certificaten"]]} actief={tab} zet={setTab} /></div>
+      {tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={MONTEURS} /></main>}
+    </div>
+  );
+}
+
+/* ---------- de monteur: alles wat hij gewerkt heeft, per week en per jaar ---------- */
+function MijnOverzicht({ naam, taal, data }: { naam: string; taal: Taal; data: Record<string, Week> }) {
+  const pl = taal === "pl";
+  const weken = Object.entries(data)
+    .filter(([k]) => k.startsWith(naam + "|"))
+    .map(([k, w]) => ({ maandag: new Date(k.split("|")[1]), w, uren: w.regels.reduce((s, r) => s + r.uren, 0) }))
+    .filter((x) => x.uren > 0)
+    .sort((a, b) => b.maandag.getTime() - a.maandag.getTime());
+  const jaren = Array.from(new Set(weken.map((x) => x.maandag.getFullYear())));
+  const L = pl
+    ? { kop: "Mój przegląd", jaar: "Razem w roku", week: "Tydzień", leeg: "Brak godzin.", goed: "Zatwierdzone", in: "Wysłane", con: "Nie wysłane", uitleg: "Tylko zatwierdzone godziny liczą się do rozliczenia rocznego." }
+    : { kop: "Mijn overzicht", jaar: "Totaal dit jaar", week: "Week", leeg: "Nog geen uren.", goed: "Goedgekeurd", in: "Ingestuurd", con: "Niet ingestuurd", uitleg: "Alleen goedgekeurde uren tellen mee voor de jaaropgave." };
+  return (
+    <div className="space-y-3">
+      <h2 className="text-xl font-bold">{L.kop}</h2>
+      {weken.length === 0 && <p className="text-slate-500">{L.leeg}</p>}
+      {jaren.map((j) => {
+        const vanJaar = weken.filter((x) => x.maandag.getFullYear() === j);
+        const goedgekeurd = vanJaar.filter((x) => x.w.goedgekeurd).reduce((s, x) => s + x.uren, 0);
+        return (
+          <section key={j} className="space-y-2">
+            <div className="rounded-2xl bg-[#1E5079] p-4 text-white">
+              <p className="text-sm opacity-80">{L.jaar} {j}</p>
+              <p className="text-3xl font-bold">{uurTekst(goedgekeurd)}</p>
+              <p className="mt-1 text-xs opacity-80">{L.uitleg}</p>
+            </div>
+            {vanJaar.map((x) => (
+              <details key={x.maandag.toISOString()} className="rounded-2xl bg-white shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                  <span className="font-semibold">{L.week} {weeknummer(x.maandag)}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${x.w.goedgekeurd ? "bg-green-100 text-green-800" : x.w.ingestuurd ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>{x.w.goedgekeurd ? L.goed : x.w.ingestuurd ? L.in : L.con}</span>
+                  <span className="ml-auto font-bold">{uurTekst(x.uren)}</span>
+                </summary>
+                <ul className="space-y-1 border-t border-slate-100 p-4 text-sm text-slate-700">
+                  {x.w.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => <li key={i}><span className="font-semibold">{T[taal].dagen[r.dag]}</span> · {r.klant} · {uurTekst(r.uren)}{r.notitie ? ` · ${r.notitie}` : ""}</li>)}
+                </ul>
+              </details>
+            ))}
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

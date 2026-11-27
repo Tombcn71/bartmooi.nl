@@ -1,511 +1,504 @@
 "use client";
+import { useEffect, useMemo, useState } from "react";
+import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
+import { Check, ChevronLeft, ChevronRight, HardHat, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Award, Check, Clock, Coffee, Download, FileText, Folder, History, LayoutDashboard, Lock, Play, Plus, Square, Trash2, Users } from "lucide-react";
-import { BONNEN, CERT_SOORTEN, CERTS, KOLOMMEN, MONTEURS, PROJECTEN, TEAM, VEREIST, certStatus, certVan, datumNL, euro, uren, type Bon, type Kolom, type Project } from "./data";
+/*
+ * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
+ * - Monteur: per dag bij welke klant en hoeveel uur, en aan het eind "week insturen". Geen inklokken.
+ * - Bart: per week per monteur de uren en goedkeuren. Geen Excel nodig.
+ * Alles is voorbeelddata en wordt alleen in deze browser bewaard.
+ */
 
 type Taal = "nl" | "pl";
+type Regel = { dag: number; klant: string; uren: number; notitie: string };
+type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
+
+const MONTEURS = ["Piotr", "Marek", "Tomasz", "Kamil", "Paweł"];
+const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, Zeestraat 31", "Van Dijk Bouw, Hoefkade 140"];
+
 const T = {
-  nl: { titel: "Mijn werkdag", project: "Project", in: "Inchecken", uit: "Uitchecken", pauze: "Pauze starten", pauzeStop: "Pauze stoppen", opm: "Opmerking (bijvoorbeeld wat je gedaan hebt)", week: "Mijn week", totaal: "Totaal", werkt: "Je werkt nu", opgeslagen: "Werkbon opgeslagen", uur: "uur" },
-  pl: { titel: "Mój dzień pracy", project: "Projekt", in: "Zacznij pracę", uit: "Zakończ pracę", pauze: "Zacznij przerwę", pauzeStop: "Zakończ przerwę", opm: "Uwagi (np. co zostało zrobione)", week: "Mój tydzień", totaal: "Razem", werkt: "Teraz pracujesz", opgeslagen: "Karta pracy zapisana", uur: "godz." },
-} as const;
+  nl: {
+    wie: "Wie ben jij?", monteur: "Monteur", bart: "Bart (kantoor)", week: "Week", dagen: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
+    toevoegen: "Andere klant toevoegen", urenInvullen: "Uren invullen", vanBart: "Opdracht van Bart", route: "Route", nietGepland: "Niet ingepland", klant: "Klant", uur: "uur", min: "min", notitie: "Wat heb je gedaan?", totaal: "Totaal deze week", insturen: "Week insturen",
+    ingestuurd: "Ingestuurd. Bart ziet je uren nu.", goedgekeurd: "Goedgekeurd door Bart", wissel: "Andere persoon", geen: "Nog niets ingevuld",
+  },
+  pl: {
+    wie: "Kim jesteś?", monteur: "Monter", bart: "Bart (biuro)", week: "Tydzień", dagen: ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"],
+    toevoegen: "Dodaj innego klienta", urenInvullen: "Wpisz godziny", vanBart: "Zadanie od Barta", route: "Trasa", nietGepland: "Brak planu", klant: "Klient", uur: "godz.", min: "min", notitie: "Co zrobiłeś?", totaal: "Razem w tym tygodniu", insturen: "Wyślij tydzień",
+    ingestuurd: "Wysłano. Bart widzi teraz twoje godziny.", goedgekeurd: "Zatwierdzone przez Barta", wissel: "Inna osoba", geen: "Nic jeszcze nie wpisano",
+  },
+};
 
-const kaart = "rounded-2xl border border-slate-200 bg-white shadow-sm";
-const knop = "rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98]";
-const blauw = `${knop} bg-blue-600 text-white hover:bg-blue-700`;
-const grijs = `${knop} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`;
+/* ---------- weken ---------- */
+function maandagVan(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+function weeknummer(maandag: Date) {
+  const d = new Date(Date.UTC(maandag.getFullYear(), maandag.getMonth(), maandag.getDate() + 3));
+  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  return 1 + Math.round((d.getTime() - jan4.getTime()) / 86400000 / 7 - ((jan4.getUTCDay() + 6) % 7 - 3) / 7);
+}
+/** 7,5 → "7:30" */
+const uurTekst = (u: number) => `${Math.floor(u)}:${String(Math.round((u % 1) * 60)).padStart(2, "0")}`;
+const sleutel = (monteur: string, maandag: Date) => `${monteur}|${maandag.toISOString().slice(0, 10)}`;
+const datumKort = (d: Date, taal: Taal) => d.toLocaleDateString(taal === "pl" ? "pl-PL" : "nl-NL", { day: "numeric", month: "short" });
 
-export default function Home() {
-  const [rol, setRol] = useState<"monteur" | "beheer" | null>(null);
-  // De pagina volgt het adres (#beheer/bord enz.), zodat de terugknop van de browser en van de telefoon werkt.
+/* ---------- opslag (alleen in deze browser) ---------- */
+function useOpslag() {
+  const [data, setData] = useState<Record<string, Week>>({});
   useEffect(() => {
-    const lees = () => {
-      const h = window.location.hash.replace("#", "");
-      setRol(h.startsWith("beheer") ? "beheer" : h.startsWith("monteur") ? "monteur" : null);
-    };
-    lees();
-    window.addEventListener("hashchange", lees);
-    return () => window.removeEventListener("hashchange", lees);
+    try {
+      const s = localStorage.getItem("bm-werkbonnen");
+      if (s) setData(JSON.parse(s));
+      else {
+        // Een paar voorbeelduren, zodat Barts scherm niet leeg is.
+        const m = maandagVan(new Date());
+        setData({
+          [sleutel("Piotr", m)]: { ingestuurd: true, goedgekeurd: false, regels: [0, 1, 2].map((dag) => ({ dag, klant: KLANTEN[0], uren: 8, notitie: dag === 0 ? "Oude kozijnen eruit" : "" })).concat([{ dag: 3, klant: KLANTEN[1], uren: 6, notitie: "Rolluiken" }]) },
+          [sleutel("Marek", m)]: { ingestuurd: false, goedgekeurd: false, regels: [{ dag: 0, klant: KLANTEN[2], uren: 7.5, notitie: "" }] },
+        });
+      }
+    } catch {}
   }, []);
-  const ga = (r: "monteur" | "beheer" | null) => {
-    window.location.hash = r ?? "";
-  };
-  const [projecten, setProjecten] = useState<Project[]>(PROJECTEN);
-  const [bonnen, setBonnen] = useState<Bon[]>(BONNEN);
-  const [melding, setMelding] = useState("");
-  const toon = (t: string) => {
-    setMelding(t);
-    setTimeout(() => setMelding(""), 2500);
-  };
-
-  if (!rol) return <Inloggen kies={ga} />;
-
-  return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => ga(null)} className={`${grijs} flex items-center gap-1 px-3 py-2`}><ArrowLeft className="size-4" /> Terug</button>
-            <div className="hidden items-center gap-2 font-bold sm:flex">
-              <span className="grid size-8 place-items-center rounded-lg bg-blue-600 text-white"><Clock className="size-4" /></span>
-              Werkbonnen
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{rol === "beheer" ? "Bart · Beheer" : "Piotr · Monteur"}</span>
-
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-5">
-        {rol === "monteur" ? <Monteur projecten={projecten} setProjecten={setProjecten} bonnen={bonnen} setBonnen={setBonnen} toon={toon} /> : <Beheer projecten={projecten} setProjecten={setProjecten} bonnen={bonnen} toon={toon} />}
-      </main>
-      {melding && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-xl">{melding}</div>}
-    </div>
-  );
+  const bewaar = (k: string, w: Week) =>
+    setData((d) => {
+      const n = { ...d, [k]: w };
+      try { localStorage.setItem("bm-werkbonnen", JSON.stringify(n)); } catch {}
+      return n;
+    });
+  return { data, bewaar };
 }
 
-/* ------------------------------ Monteur ------------------------------ */
-function Monteur({ projecten, setProjecten, bonnen, setBonnen, toon }: { projecten: Project[]; setProjecten: (p: Project[]) => void; bonnen: Bon[]; setBonnen: (b: Bon[]) => void; toon: (t: string) => void }) {
+/* ---------- planning: per monteur per dag waar hij heen gaat en wat hij moet doen ---------- */
+type Plan = { klant: string; instructie: string };
+const planSleutel = (monteur: string, maandag: Date, dag: number) => `${sleutel(monteur, maandag)}|${dag}`;
+function usePlanning() {
+  const [plan, setPlan] = useState<Record<string, Plan>>({});
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("bm-planning");
+      if (s) return setPlan(JSON.parse(s));
+      const m = maandagVan(new Date());
+      const v: Record<string, Plan> = {};
+      [0, 1, 2, 3, 4].forEach((d) => {
+        v[planSleutel("Piotr", m, d)] = { klant: KLANTEN[0], instructie: d === 0 ? "Oude kozijnen eruit, puin in de container voor de deur." : "Nieuwe kozijnen plaatsen en afkitten." };
+        v[planSleutel("Marek", m, d)] = { klant: KLANTEN[0], instructie: "Samen met Piotr." };
+        v[planSleutel("Tomasz", m, d)] = { klant: d < 2 ? KLANTEN[1] : KLANTEN[2], instructie: d < 2 ? "Rolluiken ophangen, sleutel bij de buren (nr. 33)." : "Inmeten 6 ramen, foto's maken." };
+      });
+      setPlan(v);
+    } catch {}
+  }, []);
+  const zetPlan = (k: string, p: Plan | null) =>
+    setPlan((o) => {
+      const n = { ...o };
+      if (p) n[k] = p; else delete n[k];
+      try { localStorage.setItem("bm-planning", JSON.stringify(n)); } catch {}
+      return n;
+    });
+  return { plan, zetPlan };
+}
+
+export default function Start() {
+  const [rol, setRol] = useState<null | { soort: "monteur"; naam: string } | { soort: "bart" }>(null);
   const [taal, setTaal] = useState<Taal>("nl");
+  const opslag = { ...useOpslag(), ...usePlanning() };
   const t = T[taal];
-  const [projectId, setProjectId] = useState(projecten.find((p) => p.kolom !== "Gefactureerd")!.id);
-  const [start, setStart] = useState<Date | null>(null);
-  const [pauze, setPauze] = useState(false);
-  const [pauzeMin, setPauzeMin] = useState(0);
-  const [opm, setOpm] = useState("");
-  const [, tik] = useState(0);
-  useEffect(() => {
-    const i = setInterval(() => tik((x) => x + 1), 1000);
-    return () => clearInterval(i);
-  }, []);
-  const verstreken = start ? Math.floor((Date.now() - start.getTime()) / 1000) : 0;
-  const hhmm = (d: Date) => d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-  const klok = `${String(Math.floor(verstreken / 3600)).padStart(2, "0")}:${String(Math.floor((verstreken % 3600) / 60)).padStart(2, "0")}:${String(verstreken % 60).padStart(2, "0")}`;
-  const project = projecten.find((p) => p.id === projectId)!;
 
-  const inchecken = () => {
-    setStart(new Date());
-    setPauzeMin(0);
-    setProjecten(projecten.map((p) => (p.id === projectId && p.kolom === "Gepland" ? { ...p, kolom: "Bezig" as Kolom } : p)));
-  };
-  const uitchecken = () => {
-    const nu = new Date();
-    const nieuw: Bon = { id: "n" + Date.now(), monteur: "Piotr Kowalski", project: project.naam, dag: "di 24 nov", week: 48, start: hhmm(start!), eind: hhmm(nu), pauze: pauzeMin, opmerking: opm, vergrendeld: false };
-    setBonnen([nieuw, ...bonnen]);
-    setStart(null);
-    setPauze(false);
-    setOpm("");
-    toon(t.opgeslagen);
-  };
-  const mijn = bonnen.filter((b) => b.monteur === "Piotr Kowalski" && b.week === 48);
-  const totaal = mijn.reduce((a, b) => a + uren(b), 0);
+  if (!rol) return <Inloggen taal={taal} setTaal={setTaal} kies={setRol} />;
 
-  return (
-    <div className="mx-auto max-w-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold">{t.titel}</h1>
-        <div className="flex rounded-lg bg-slate-200 p-0.5 text-xs font-bold">
-          {(["nl", "pl"] as const).map((k) => (
-            <button key={k} onClick={() => setTaal(k)} className={`rounded-md px-3 py-1 uppercase ${taal === k ? "bg-white shadow-sm" : "text-slate-500"}`}>{k}</button>
-          ))}
-        </div>
-      </div>
-      <div className={`${kaart} p-4`}>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.project}</label>
-        <select disabled={!!start} value={projectId} onChange={(e) => setProjectId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-base">
-          {projecten.filter((p) => p.kolom !== "Gefactureerd").map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
-        </select>
-        {start ? (
-          <div className="mt-5 text-center">
-            <p className="text-sm font-medium text-green-700">{t.werkt} · {hhmm(start)}</p>
-            <p className="my-2 font-mono text-5xl font-bold tabular-nums">{klok}</p>
-            <textarea value={opm} onChange={(e) => setOpm(e.target.value)} placeholder={t.opm} rows={2} className="my-2 w-full rounded-xl border border-slate-300 p-3 text-sm" />
-            <button onClick={() => { setPauze(!pauze); if (!pauze) setPauzeMin(pauzeMin + 30); }} className={`${grijs} mb-3 flex w-full items-center justify-center gap-2`}>
-              <Coffee className="size-4" /> {pauze ? t.pauzeStop : t.pauze} {pauzeMin ? `· ${pauzeMin} min` : ""}
-            </button>
-            <button onClick={uitchecken} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-5 text-lg font-bold text-white active:scale-[0.98]"><Square className="size-5" /> {t.uit}</button>
-          </div>
-        ) : (
-          <button onClick={inchecken} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 py-6 text-xl font-bold text-white active:scale-[0.98]"><Play className="size-6" /> {t.in}</button>
-        )}
-      </div>
-      <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">{t.week}</h2>
-      <div className={`${kaart} divide-y divide-slate-100`}>
-        {mijn.map((b) => (
-          <div key={b.id} className="flex items-center justify-between gap-3 p-3 text-sm">
-            <div className="min-w-0"><p className="truncate font-semibold">{b.project}</p><p className="text-slate-500">{b.dag} · {b.start}–{b.eind}</p></div>
-            <span className="shrink-0 font-bold">{uren(b)} {t.uur}</span>
-          </div>
-        ))}
-        <div className="flex justify-between p-3 text-sm font-bold"><span>{t.totaal}</span><span>{Math.round(totaal * 100) / 100} {t.uur}</span></div>
-      </div>
-      <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">{taal === "nl" ? "Mijn certificaten" : "Moje certyfikaty"}</h2>
-      <div className={`${kaart} divide-y divide-slate-100`}>
-        {CERTS.filter((c) => c.monteur === "Piotr Kowalski").map((c) => {
-          const st = certStatus(c);
-          return (
-            <div key={c.soort} className="flex items-center justify-between gap-3 p-3 text-sm">
-              <div><p className="font-semibold">{c.soort}</p><p className="text-slate-500">{taal === "nl" ? "tot" : "do"} {datumNL(c.verloopt)}</p></div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${stKleur[st]}`}>{stTekst[st]}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+  return rol.soort === "monteur" ? (
+    <MonteurOmgeving naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
+  ) : (
+    <KantoorOmgeving terug={() => setRol(null)} {...opslag} />
   );
 }
 
-/* ------------------------------ Beheer ------------------------------ */
-type Tab = "overzicht" | "bord" | "bonnen" | "projecten" | "certificaten" | "facturen" | "geschiedenis" | "monteurs";
-const TABS: { id: Tab; naam: string; icon: typeof Clock }[] = [
-  { id: "overzicht", naam: "Overzicht", icon: LayoutDashboard },
-  { id: "bord", naam: "Bord", icon: Folder },
-  { id: "bonnen", naam: "Werkbonnen", icon: Clock },
-  { id: "projecten", naam: "Projecten", icon: Folder },
-  { id: "certificaten", naam: "Certificaten", icon: Award },
-  { id: "facturen", naam: "Facturen", icon: FileText },
-  { id: "geschiedenis", naam: "Geschiedenis", icon: History },
-  { id: "monteurs", naam: "Monteurs", icon: Users },
-];
-
-function Beheer({ projecten, setProjecten, bonnen, toon }: { projecten: Project[]; setProjecten: (p: Project[]) => void; bonnen: Bon[]; toon: (t: string) => void }) {
-  const [tab, setTabState] = useState<Tab>("overzicht");
-  useEffect(() => {
-    const lees = () => {
-      const t = window.location.hash.replace("#beheer/", "") as Tab;
-      setTabState(TABS.some((x) => x.id === t) ? t : "overzicht");
-    };
-    lees();
-    window.addEventListener("hashchange", lees);
-    return () => window.removeEventListener("hashchange", lees);
-  }, []);
-  const setTab = (t: Tab) => {
-    window.location.hash = "beheer/" + t;
-  };
+/* ---------- inloggen: eerst monteur of kantoor, dan je gegevens ---------- */
+const MONTEUR_TEL: Record<string, string> = { "0611111111": "Piotr", "0622222222": "Marek", "0633333333": "Tomasz" };
+function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => void; kies: (r: { soort: "monteur"; naam: string } | { soort: "bart" }) => void }) {
+  const [wie, setWie] = useState<null | "monteur" | "kantoor">(null);
+  const [tel, setTel] = useState("");
+  const [code, setCode] = useState("");
+  const [fout, setFout] = useState("");
+  const L = taal === "pl"
+    ? { titel: "Godziny pracy", monteur: "Jestem monterem", kantoor: "Biuro", tel: "Twój numer telefonu", pin: "Kod PIN (4 cyfry)", in: "Zaloguj się", terug: "Wstecz", fout: "Nieprawidłowy numer lub kod." }
+    : { titel: "Werkbonnen", monteur: "Ik ben monteur", kantoor: "Kantoor", tel: "Je telefoonnummer", pin: "Pincode (4 cijfers)", in: "Inloggen", terug: "Terug", fout: "Nummer of pincode klopt niet." };
+  const veld = "w-full rounded-xl border border-slate-300 bg-white p-4 text-lg";
   return (
-    <div className="grid gap-4 md:grid-cols-[200px_1fr]">
-      <nav className="flex gap-1 overflow-x-auto md:flex-col">
-        {TABS.map((x) => (
-          <button key={x.id} onClick={() => setTab(x.id)} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold ${tab === x.id ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-white"}`}>
-            <x.icon className="size-4" /> {x.naam}
-          </button>
-        ))}
-      </nav>
-      <section className="min-w-0">
-        {tab === "overzicht" && <Overzicht projecten={projecten} bonnen={bonnen} />}
-        {tab === "bord" && <Bord projecten={projecten} setProjecten={setProjecten} />}
-        {tab === "bonnen" && <Bonnen bonnen={bonnen} />}
-        {tab === "projecten" && <Projecten projecten={projecten} setProjecten={setProjecten} toon={toon} />}
-        {tab === "certificaten" && <Certificaten toon={toon} />}
-        {tab === "facturen" && <Facturen projecten={projecten} setProjecten={setProjecten} toon={toon} />}
-        {tab === "geschiedenis" && <Geschiedenis bonnen={bonnen} toon={toon} />}
-        {tab === "monteurs" && <Monteurs toon={toon} />}
-      </section>
-    </div>
-  );
-}
-
-const bedragVan = (p: Project) => (p.tarief.soort === "uur" ? p.uren * p.tarief.bedrag : p.tarief.bedrag);
-
-function Overzicht({ projecten, bonnen }: { projecten: Project[]; bonnen: Bon[] }) {
-  const werkend = projecten.filter((p) => p.kolom === "Bezig").flatMap((p) => p.werkt.map((m) => ({ m, p })));
-  const nogNiet = projecten.filter((p) => p.kolom === "Klaar om te factureren");
-  const uurWeek = bonnen.filter((b) => b.week === 48).reduce((a, b) => a + uren(b), 0);
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[["Nu aan het werk", `${werkend.length} monteurs`], ["Uren deze week", `${Math.round(uurWeek * 10) / 10} uur`], ["Nog te factureren", euro(nogNiet.reduce((a, p) => a + bedragVan(p), 0))]].map(([k, v]) => (
-          <div key={k} className={`${kaart} p-4`}><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{k}</p><p className="mt-1 text-2xl font-bold">{v}</p></div>
-        ))}
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{L.titel}</h1>
+        <TaalKnop taal={taal} setTaal={setTaal} />
       </div>
-      <div className={kaart}>
-        <h2 className="border-b border-slate-100 p-4 font-bold">Wie werkt waar (vandaag)</h2>
-        {MONTEURS.map((m) => {
-          const w = werkend.find((x) => x.m === m);
-          return (
-            <div key={m} className="flex items-center justify-between gap-3 border-b border-slate-100 p-4 last:border-0">
-              <span className="font-semibold">{m}</span>
-              {w ? <span className="flex items-center gap-2 text-sm text-green-700"><span className="size-2 rounded-full bg-green-500" /> {w.p.naam}</span> : <span className="text-sm text-slate-400">Niet ingecheckt</span>}
-            </div>
-          );
-        })}
-      </div>
-      {nogNiet.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
-          <b>Klaar maar nog niet gefactureerd:</b> {nogNiet.map((p) => p.naam).join(", ")}.
-        </div>
+      {!wie && (
+        <>
+          <button onClick={() => kies({ soort: "monteur", naam: "Piotr" })} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
+          <button onClick={() => kies({ soort: "bart" })} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
+        </>
       )}
-    </div>
+      {wie && (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (wie === "kantoor") return code.length > 0 ? kies({ soort: "bart" }) : setFout(L.fout);
+            const naam = MONTEUR_TEL[tel.replace(/\D/g, "")];
+            if (naam && code.length === 4) kies({ soort: "monteur", naam });
+            else setFout(L.fout);
+          }}>
+          <p className="text-lg font-semibold">{wie === "monteur" ? L.monteur : L.kantoor}</p>
+          {wie === "monteur" && <input inputMode="tel" autoComplete="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder={L.tel} className={veld} />}
+          <input inputMode={wie === "monteur" ? "numeric" : undefined} type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder={wie === "monteur" ? L.pin : "Wachtwoord"} maxLength={wie === "monteur" ? 4 : undefined} className={veld} />
+          {fout && <p className="text-sm text-red-600">{fout}</p>}
+          <button className="w-full rounded-xl bg-[#1E5079] p-4 text-lg font-bold text-white">{L.in}</button>
+          <button type="button" onClick={() => { setWie(null); setFout(""); setCode(""); }} className="w-full p-2 text-slate-600">← {L.terug}</button>
+          <p className="pt-4 text-center text-xs text-slate-500">Voorbeeld: monteur Piotr = 0611111111, Marek = 0622222222, Tomasz = 0633333333, elke pincode van 4 cijfers. Kantoor: elk wachtwoord.</p>
+        </form>
+      )}
+    </main>
   );
 }
 
-function Bord({ projecten, setProjecten }: { projecten: Project[]; setProjecten: (p: Project[]) => void }) {
-  const [sleep, setSleep] = useState<string | null>(null);
-  const zet = (id: string, kolom: Kolom) => setProjecten(projecten.map((p) => (p.id === id ? { ...p, kolom } : p)));
+/* ---------- tabbladen ---------- */
+function Tabs<T extends string>({ tabs, actief, zet }: { tabs: [T, string][]; actief: T; zet: (t: T) => void }) {
   return (
-    <div className="grid gap-3 overflow-x-auto md:grid-cols-4">
-      {KOLOMMEN.map((k, i) => (
-        <div key={k} onDragOver={(e) => e.preventDefault()} onDrop={() => sleep && zet(sleep, k)} className="min-w-56 rounded-2xl bg-slate-200/70 p-2.5">
-          <h3 className="mb-2 flex items-center justify-between px-1 text-sm font-bold">{k}<span className="rounded-full bg-white px-2 text-xs">{projecten.filter((p) => p.kolom === k).length}</span></h3>
-          <div className="space-y-2">
-            {projecten.filter((p) => p.kolom === k).map((p) => (
-              <div key={p.id} draggable onDragStart={() => setSleep(p.id)} className={`${kaart} cursor-grab p-3 text-sm`}>
-                <p className="font-bold leading-snug">{p.naam}</p>
-                <p className="text-slate-500">{p.klant}</p>
-                <p className="mt-1 text-slate-600">{p.uren} uur{p.werkt.length ? ` · ${p.werkt.join(", ")}` : ""}</p>
-                <div className="mt-2 flex gap-1.5">
-                  {i > 0 && <button onClick={() => zet(p.id, KOLOMMEN[i - 1])} className="rounded-lg border border-slate-200 px-2 py-1 text-xs">←</button>}
-                  {k === "Bezig" ? <button onClick={() => zet(p.id, "Klaar om te factureren")} className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white">Project afgerond</button> : i < 3 && <button onClick={() => zet(p.id, KOLOMMEN[i + 1])} className="rounded-lg border border-slate-200 px-2 py-1 text-xs">→</button>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <nav className="sticky top-0 z-10 -mx-4 flex gap-1 bg-[#f4f6f8]/95 px-4 py-2 backdrop-blur">
+      {tabs.map(([id, naam]) => (
+        <button key={id} onClick={() => zet(id)} className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold ${actief === id ? "bg-[#1E5079] text-white" : "bg-white text-slate-700 shadow-sm"}`}>{naam}</button>
       ))}
+    </nav>
+  );
+}
+
+function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const [tab, setTab] = useState<"uren" | "overzicht" | "cert">("uren");
+  const pl = p.taal === "pl";
+  const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
+  return (
+    <div>
+      <div className="mx-auto max-w-md px-4 pt-4"><Tabs tabs={tabs} actief={tab} zet={setTab} /></div>
+      {tab === "uren" && <Monteur {...p} />}
+      {tab === "overzicht" && <main className="mx-auto max-w-md p-4"><MijnOverzicht naam={p.naam} taal={p.taal} data={p.data} /></main>}
+      {tab === "cert" && <main className="mx-auto max-w-md p-4"><MijnCertificaten naam={p.naam} pl={pl} /></main>}
     </div>
   );
 }
 
-function Bonnen({ bonnen }: { bonnen: Bon[] }) {
-  const [monteur, setMonteur] = useState("");
-  const [project, setProject] = useState("");
-  const [week, setWeek] = useState("");
-  const lijst = bonnen.filter((b) => (!monteur || b.monteur === monteur) && (!project || b.project === project) && (!week || String(b.week) === week));
-  const sel = "rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm";
+function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const [tab, setTab] = useState<"plan" | "uren" | "cert">("plan");
+  return (
+    <div>
+      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"]]} actief={tab} zet={setTab} /></div>
+      {tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={MONTEURS} /></main>}
+    </div>
+  );
+}
+
+/* ---------- de monteur: alles wat hij gewerkt heeft, per week en per jaar ---------- */
+function MijnOverzicht({ naam, taal, data }: { naam: string; taal: Taal; data: Record<string, Week> }) {
+  const pl = taal === "pl";
+  const weken = Object.entries(data)
+    .filter(([k]) => k.startsWith(naam + "|"))
+    .map(([k, w]) => ({ maandag: new Date(k.split("|")[1]), w, uren: w.regels.reduce((s, r) => s + r.uren, 0) }))
+    .filter((x) => x.uren > 0)
+    .sort((a, b) => b.maandag.getTime() - a.maandag.getTime());
+  const jaren = Array.from(new Set(weken.map((x) => x.maandag.getFullYear())));
+  const L = pl
+    ? { kop: "Mój przegląd", jaar: "Razem w roku", week: "Tydzień", leeg: "Brak godzin.", goed: "Zatwierdzone", in: "Wysłane", con: "Nie wysłane", uitleg: "Tylko zatwierdzone godziny liczą się do rozliczenia rocznego." }
+    : { kop: "Mijn overzicht", jaar: "Totaal dit jaar", week: "Week", leeg: "Nog geen uren.", goed: "Goedgekeurd", in: "Ingestuurd", con: "Niet ingestuurd", uitleg: "Alleen goedgekeurde uren tellen mee voor de jaaropgave." };
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <select className={sel} value={monteur} onChange={(e) => setMonteur(e.target.value)}><option value="">Alle monteurs</option>{MONTEURS.map((m) => <option key={m}>{m}</option>)}</select>
-        <select className={sel} value={project} onChange={(e) => setProject(e.target.value)}><option value="">Alle projecten</option>{PROJECTEN.map((p) => <option key={p.id}>{p.naam}</option>)}</select>
-        <select className={sel} value={week} onChange={(e) => setWeek(e.target.value)}><option value="">Alle weken</option>{[48, 47, 33].map((w) => <option key={w} value={w}>Week {w}</option>)}</select>
-      </div>
-      <div className={`${kaart} overflow-x-auto`}>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500"><tr>{["Dag", "Monteur", "Project", "Tijd", "Pauze", "Uren", ""].map((h) => <th key={h} className="p-3">{h}</th>)}</tr></thead>
-          <tbody>
-            {lijst.map((b) => (
-              <tr key={b.id} className="border-b border-slate-50 last:border-0">
-                <td className="p-3">{b.dag}</td><td className="p-3 font-semibold">{b.monteur}</td><td className="p-3">{b.project}</td><td className="p-3">{b.start}–{b.eind}</td><td className="p-3">{b.pauze} min</td><td className="p-3 font-bold">{uren(b)}</td>
-                <td className="p-3">{b.vergrendeld && <Lock className="size-4 text-slate-400" />}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {lijst.length === 0 && <p className="p-6 text-center text-slate-400">Geen werkbonnen gevonden.</p>}
-      </div>
-      <p className="text-xs text-slate-500">Een slotje betekent: afgerond of gefactureerd. Wijzigingen blijven zichtbaar met datum en wie het deed.</p>
-    </div>
-  );
-}
-
-function Projecten({ projecten, setProjecten, toon }: { projecten: Project[]; setProjecten: (p: Project[]) => void; toon: (t: string) => void }) {
-  const [naam, setNaam] = useState("");
-  const [klant, setKlant] = useState("");
-  const [soort, setSoort] = useState<"uur" | "vast">("uur");
-  const [bedrag, setBedrag] = useState(48);
-  const inp = "rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm";
-  const voeg = () => {
-    if (!naam.trim()) return;
-    setProjecten([...projecten, { id: "p" + Date.now(), naam, klant: klant || "—", tarief: { soort, bedrag }, kolom: "Gepland", uren: 0, werkt: [] }]);
-    setNaam("");
-    setKlant("");
-    toon("Project toegevoegd");
-  };
-  return (
-    <div className="space-y-4">
-      <div className={`${kaart} flex flex-wrap items-end gap-2 p-4`}>
-        <input className={`${inp} min-w-48 flex-1`} placeholder="Projectnaam" value={naam} onChange={(e) => setNaam(e.target.value)} />
-        <input className={`${inp} min-w-40`} placeholder="Opdrachtgever" value={klant} onChange={(e) => setKlant(e.target.value)} />
-        <select className={inp} value={soort} onChange={(e) => setSoort(e.target.value as "uur" | "vast")}><option value="uur">Uurtarief</option><option value="vast">Vaste prijs</option></select>
-        <input className={`${inp} w-28`} type="number" value={bedrag} onChange={(e) => setBedrag(Number(e.target.value))} />
-        <button onClick={voeg} className={`${blauw} flex items-center gap-1`}><Plus className="size-4" /> Project</button>
-      </div>
-      <div className={`${kaart} divide-y divide-slate-100`}>
-        {projecten.map((p) => (
-          <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
-            <div><p className="font-bold">{p.naam}</p><p className="text-slate-500">{p.klant}</p></div>
-            <div className="text-right"><p className="font-semibold">{p.tarief.soort === "uur" ? `${euro(p.tarief.bedrag)} per uur` : `Vast ${euro(p.tarief.bedrag)}`}</p><p className="text-slate-500">{p.kolom} · {p.uren} uur</p></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type Status = "concept" | "goedgekeurd" | "verzonden" | "credit";
-function Facturen({ projecten, setProjecten, toon }: { projecten: Project[]; setProjecten: (p: Project[]) => void; toon: (t: string) => void }) {
-  const [status, setStatus] = useState<Record<string, Status>>({ p6: "verzonden" });
-  const [nummer, setNummer] = useState<Record<string, string>>({ p6: "2026-0006" });
-  const [volgend, setVolgend] = useState(7);
-  const lijst = projecten.filter((p) => p.kolom === "Klaar om te factureren" || p.kolom === "Gefactureerd");
-  const verstuur = (p: Project) => {
-    setNummer({ ...nummer, [p.id]: `2026-${String(volgend).padStart(4, "0")}` });
-    setVolgend(volgend + 1);
-    setStatus({ ...status, [p.id]: "verzonden" });
-    setProjecten(projecten.map((x) => (x.id === p.id ? { ...x, kolom: "Gefactureerd" as Kolom } : x)));
-    toon("Factuur per e-mail verstuurd (als pdf)");
-  };
-  return (
-    <div className="space-y-3">
-      {lijst.length === 0 && <p className="text-slate-500">Er zijn geen facturen. Zet een project op &ldquo;Project afgerond&rdquo; op het bord.</p>}
-      {lijst.map((p) => {
-        const s = status[p.id] ?? "concept";
-        const ex = bedragVan(p);
+      <h2 className="text-xl font-bold">{L.kop}</h2>
+      {weken.length === 0 && <p className="text-slate-500">{L.leeg}</p>}
+      {jaren.map((j) => {
+        const vanJaar = weken.filter((x) => x.maandag.getFullYear() === j);
+        const goedgekeurd = vanJaar.filter((x) => x.w.goedgekeurd).reduce((s, x) => s + x.uren, 0);
         return (
-          <div key={p.id} className={`${kaart} p-4`}>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div><p className="font-bold">{p.naam}</p><p className="text-sm text-slate-500">{p.klant} · {p.tarief.soort === "uur" ? `${p.uren} uur × ${euro(p.tarief.bedrag)}` : "vaste prijs"}</p></div>
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${s === "verzonden" ? "bg-slate-200 text-slate-700" : s === "goedgekeurd" ? "bg-green-100 text-green-700" : s === "credit" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{s === "concept" ? "Concept" : s === "goedgekeurd" ? "Goedgekeurd" : s === "credit" ? "Creditfactuur" : "Verzonden"}</span>
+          <section key={j} className="space-y-2">
+            <div className="rounded-2xl bg-[#1E5079] p-4 text-white">
+              <p className="text-sm opacity-80">{L.jaar} {j}</p>
+              <p className="text-3xl font-bold">{uurTekst(goedgekeurd)}</p>
+              <p className="mt-1 text-xs opacity-80">{L.uitleg}</p>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-sm"><div><p className="text-slate-500">Excl. btw</p><b>{euro(ex)}</b></div><div><p className="text-slate-500">Btw 21%</p><b>{euro(ex * 0.21)}</b></div><div><p className="text-slate-500">Totaal</p><b>{euro(ex * 1.21)}</b></div></div>
-            {nummer[p.id] && <p className="mt-2 text-xs text-slate-500">Factuurnummer {nummer[p.id]} · vergrendeld, wijzigen kan alleen met een creditfactuur</p>}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {s === "concept" && <button className={blauw} onClick={() => setStatus({ ...status, [p.id]: "goedgekeurd" })}><Check className="mr-1 inline size-4" />Goedkeuren</button>}
-              {s === "goedgekeurd" && <button className={blauw} onClick={() => verstuur(p)}>Versturen per e-mail</button>}
-              {s === "verzonden" && <button className={grijs} onClick={() => { setStatus({ ...status, [p.id]: "credit" }); toon("Creditfactuur gemaakt"); }}>Creditfactuur maken</button>}
-              <button className={grijs} onClick={() => toon("Pdf geopend (voorbeeld)")}><Download className="mr-1 inline size-4" />Pdf</button>
-            </div>
-          </div>
+            {vanJaar.map((x) => (
+              <details key={x.maandag.toISOString()} className="rounded-2xl bg-white shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                  <span className="font-semibold">{L.week} {weeknummer(x.maandag)}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${x.w.goedgekeurd ? "bg-green-100 text-green-800" : x.w.ingestuurd ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>{x.w.goedgekeurd ? L.goed : x.w.ingestuurd ? L.in : L.con}</span>
+                  <span className="ml-auto font-bold">{uurTekst(x.uren)}</span>
+                </summary>
+                <ul className="space-y-1 border-t border-slate-100 p-4 text-sm text-slate-700">
+                  {x.w.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => <li key={i}><span className="font-semibold">{T[taal].dagen[r.dag]}</span> · {r.klant} · {uurTekst(r.uren)}{r.notitie ? ` · ${r.notitie}` : ""}</li>)}
+                </ul>
+              </details>
+            ))}
+          </section>
         );
       })}
     </div>
   );
 }
 
-function Geschiedenis({ bonnen, toon }: { bonnen: Bon[]; toon: (t: string) => void }) {
-  const [q, setQ] = useState("");
-  const lijst = bonnen.filter((b) => `${b.monteur} ${b.project} ${b.dag} week ${b.week} ${b.opmerking}`.toLowerCase().includes(q.toLowerCase()));
+function TaalKnop({ taal, setTaal }: { taal: Taal; setTaal: (t: Taal) => void }) {
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek op monteur, project, opdrachtgever of week (bijv. week 33)" className="min-w-64 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
-        <button className={grijs} onClick={() => toon("Excel gemaakt (voorbeeld)")}><Download className="mr-1 inline size-4" />Excel</button>
-        <button className={grijs} onClick={() => toon("Pdf gemaakt (voorbeeld)")}><Download className="mr-1 inline size-4" />Pdf</button>
-      </div>
-      <div className={`${kaart} divide-y divide-slate-100`}>
-        {lijst.map((b) => (
-          <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
-            <div><p className="font-semibold">{b.project}</p><p className="text-slate-500">Week {b.week} · {b.dag} · {b.monteur}{b.opmerking ? ` · ${b.opmerking}` : ""}</p></div>
-            <span className="flex items-center gap-2 font-bold">{uren(b)} uur {b.vergrendeld && <Lock className="size-4 text-slate-400" />}</span>
-          </div>
-        ))}
-        {lijst.length === 0 && <p className="p-6 text-center text-slate-400">Niets gevonden.</p>}
-      </div>
+    <div className="flex rounded-full bg-slate-200 p-0.5 text-sm font-bold">
+      {(["nl", "pl"] as const).map((x) => (
+        <button key={x} onClick={() => setTaal(x)} className={`rounded-full px-3 py-1 uppercase ${taal === x ? "bg-white shadow-sm" : "text-slate-600"}`}>{x}</button>
+      ))}
     </div>
   );
 }
 
-function Monteurs({ toon }: { toon: (t: string) => void }) {
-  const [lijst, setLijst] = useState(MONTEURS.map((m) => ({ naam: m, mail: m.split(" ")[0].toLowerCase() + "@voorbeeld.nl" })));
-  const [mail, setMail] = useState("");
+function WeekKiezer({ maandag, setMaandag, label, taal }: { maandag: Date; setMaandag: (d: Date) => void; label: string; taal: Taal }) {
+  const zondag = new Date(maandag); zondag.setDate(zondag.getDate() + 6);
+  const schuif = (n: number) => { const d = new Date(maandag); d.setDate(d.getDate() + 7 * n); setMaandag(d); };
   return (
-    <div className="space-y-4">
-      <div className={`${kaart} flex flex-wrap gap-2 p-4`}>
-        <input value={mail} onChange={(e) => setMail(e.target.value)} placeholder="E-mailadres van de monteur" className="min-w-64 flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-        <button className={blauw} onClick={() => { if (!mail.includes("@")) return; setLijst([...lijst, { naam: mail.split("@")[0], mail }]); setMail(""); toon("Uitnodiging verstuurd"); }}>Uitnodigen</button>
-      </div>
-      <div className={`${kaart} divide-y divide-slate-100`}>
-        {lijst.map((m) => (
-          <div key={m.mail} className="flex items-center justify-between gap-2 p-4 text-sm">
-            <div><p className="font-semibold">{m.naam}</p><p className="text-slate-500">{m.mail}</p></div>
-            <button className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label="Verwijderen" onClick={() => { setLijst(lijst.filter((x) => x.mail !== m.mail)); toon("Monteur verwijderd"); }}><Trash2 className="size-4" /></button>
-          </div>
-        ))}
-      </div>
+    <div className="flex items-center justify-between rounded-2xl bg-white p-2 shadow-sm">
+      <button onClick={() => schuif(-1)} className="grid size-10 place-items-center rounded-full hover:bg-slate-100" aria-label="Vorige week"><ChevronLeft /></button>
+      <div className="text-center"><div className="font-bold">{label} {weeknummer(maandag)}</div><div className="text-xs text-slate-500">{datumKort(maandag, taal)} – {datumKort(zondag, taal)}</div></div>
+      <button onClick={() => schuif(1)} className="grid size-10 place-items-center rounded-full hover:bg-slate-100" aria-label="Volgende week"><ChevronRight /></button>
     </div>
   );
 }
 
-const stKleur = { geldig: "bg-green-100 text-green-700", bijna: "bg-amber-100 text-amber-700", verlopen: "bg-red-100 text-red-700", ontbreekt: "bg-slate-100 text-slate-500" } as const;
-const stTekst = { geldig: "Geldig", bijna: "Bijna verlopen", verlopen: "Verlopen", ontbreekt: "Ontbreekt" } as const;
+/* ---------- monteur: één scherm, de week ---------- */
+function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const t = T[taal];
+  const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
+  const k = sleutel(naam, maandag);
+  const week: Week = data[k] ?? { regels: [], ingestuurd: false, goedgekeurd: false };
+  const zet = (regels: Regel[]) => bewaar(k, { ...week, regels, ingestuurd: false });
+  const totaal = week.regels.reduce((s, r) => s + r.uren, 0);
+  const vast = week.goedgekeurd;
 
-function Certificaten({ toon }: { toon: (t: string) => void }) {
-  const problemen = CERTS.filter((c) => certStatus(c) === "verlopen" || certStatus(c) === "bijna");
-  const deel = (id: string) => {
-    const url = `${window.location.origin}/deel/${id}`;
-    navigator.clipboard?.writeText(url).catch(() => {});
-    toon("Link gekopieerd: " + url);
-  };
   return (
-    <div className="space-y-5">
-      {problemen.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
-          <b>Let op:</b> {problemen.map((c) => `${c.monteur} (${c.soort}, ${certStatus(c) === "verlopen" ? "verlopen" : "verloopt " + datumNL(c.verloopt)})`).join(" · ")}
+    <main className="mx-auto max-w-md space-y-3 p-4 pb-28">
+      <div className="flex items-center justify-between">
+        <button onClick={terug} className="text-sm text-slate-600">← {t.wissel}</button>
+        <TaalKnop taal={taal} setTaal={setTaal} />
+      </div>
+      <h1 className="text-2xl font-bold">{naam}</h1>
+      <WeekKiezer maandag={maandag} setMaandag={setMaandag} label={t.week} taal={taal} />
+
+      {t.dagen.map((dagNaam, dag) => {
+        const datum = new Date(maandag); datum.setDate(datum.getDate() + dag);
+        const regels = week.regels.map((r, i) => ({ r, i })).filter(({ r }) => r.dag === dag);
+        const gepland = plan[planSleutel(naam, maandag, dag)];
+        return (
+          <section key={dag} className="rounded-2xl bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="font-bold">{dagNaam}</h2>
+              <span className="text-sm text-slate-500">{datumKort(datum, taal)}</span>
+            </div>
+            {gepland && (
+              <div className="mb-3 rounded-xl bg-blue-50 p-3">
+                <p className="flex items-start gap-2 font-semibold text-[#1E5079]"><MapPin className="mt-0.5 size-4 shrink-0" /> {gepland.klant}</p>
+                {gepland.instructie && <p className="mt-1 text-sm text-slate-700"><span className="font-semibold">{t.vanBart}:</span> {gepland.instructie}</p>}
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(gepland.klant.split(", ").slice(1).join(", ") + " Den Haag")}`} target="_blank" rel="noopener" className="mt-2 inline-block text-sm font-semibold text-[#1E5079] underline">{t.route}</a>
+              </div>
+            )}
+            {!gepland && regels.length === 0 && <p className="mb-2 text-sm text-slate-400">{t.nietGepland}</p>}
+            {regels.map(({ r, i }) => (
+              <div key={i} className="mb-3 space-y-2 border-b border-slate-100 pb-3 last:border-0">
+                <select disabled={vast} value={r.klant} onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, klant: e.target.value } : x)))} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-base">
+                  {KLANTEN.map((kl) => <option key={kl}>{kl}</option>)}
+                </select>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2">
+                    <input disabled={vast} inputMode="numeric" value={Math.floor(r.uren) || ""} placeholder="0"
+                      onChange={(e) => { const h = Math.min(16, Math.max(0, parseInt(e.target.value.replace(/\D/g, "") || "0", 10))); zet(week.regels.map((x, j) => (j === i ? { ...x, uren: h + (x.uren % 1) } : x))); }}
+                      className="w-16 rounded-xl border border-slate-300 p-3 text-center text-xl font-bold" />
+                    <span className="text-sm text-slate-600">{t.uur}</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <select disabled={vast} value={Math.round((r.uren % 1) * 60)}
+                      onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, uren: Math.floor(x.uren) + Number(e.target.value) / 60 } : x)))}
+                      className="rounded-xl border border-slate-300 bg-white p-3 text-xl font-bold">
+                      {[0, 15, 30, 45].map((m) => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
+                    </select>
+                    <span className="text-sm text-slate-600">{t.min}</span>
+                  </label>
+                  {!vast && <button onClick={() => zet(week.regels.filter((_, j) => j !== i))} className="ml-auto text-sm text-red-600">✕</button>}
+                </div>
+                <input disabled={vast} value={r.notitie} onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, notitie: e.target.value } : x)))} placeholder={t.notitie} className="w-full rounded-xl border border-slate-200 p-3 text-base" />
+              </div>
+            ))}
+            {!vast && (
+              <button onClick={() => zet([...week.regels, { dag, klant: regels.at(-1)?.r.klant ?? gepland?.klant ?? KLANTEN[0], uren: 8, notitie: "" }])} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-3 text-sm font-semibold text-slate-600">
+                <Plus className="size-4" /> {gepland && regels.length === 0 ? t.urenInvullen : t.toevoegen}
+              </button>
+            )}
+          </section>
+        );
+      })}
+
+      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
+        <div className="mx-auto flex max-w-md items-center gap-3">
+          <div><div className="text-xs text-slate-500">{t.totaal}</div><div className="text-xl font-bold">{uurTekst(totaal)}</div></div>
+          {week.goedgekeurd ? (
+            <span className="ml-auto flex items-center gap-1 font-semibold text-green-700"><Check className="size-5" /> {t.goedgekeurd}</span>
+          ) : week.ingestuurd ? (
+            <span className="ml-auto text-right text-sm font-semibold text-green-700">{t.ingestuurd}</span>
+          ) : (
+            <button disabled={totaal === 0} onClick={() => bewaar(k, { ...week, ingestuurd: true })} className="ml-auto flex items-center gap-2 rounded-xl bg-[#1E5079] px-5 py-3 font-bold text-white disabled:opacity-40">
+              <Send className="size-4" /> {t.insturen}
+            </button>
+          )}
         </div>
+      </div>
+    </main>
+  );
+}
+
+/* ---------- Bart: de week van alle monteurs ---------- */
+function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
+  const dagen = T.nl.dagen.map((d) => d.slice(0, 2));
+  const rijen = useMemo(() => MONTEURS.map((m) => ({ m, k: sleutel(m, maandag), w: data[sleutel(m, maandag)] })), [data, maandag]);
+
+
+
+  return (
+    <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8">
+      <div className="flex items-center justify-between">
+        <button onClick={terug} className="text-sm text-slate-600">← Andere persoon</button>
+        
+      </div>
+      <h1 className="text-2xl font-bold">Uren van de monteurs</h1>
+      <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>
+
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="grid grid-cols-[1fr_repeat(7,2.2rem)_3.5rem] items-center gap-1 border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 md:grid-cols-[1fr_repeat(7,3rem)_4rem_9rem]">
+          <span>Monteur</span>{dagen.map((d) => <span key={d} className="text-center">{d}</span>)}<span className="text-right">Totaal</span><span className="hidden md:block" />
+        </div>
+        {rijen.map(({ m, k, w }) => {
+          const perDag = dagen.map((_, d) => (w?.regels ?? []).filter((r) => r.dag === d).reduce((s, r) => s + r.uren, 0));
+          const totaal = perDag.reduce((a, b) => a + b, 0);
+          const status = w?.goedgekeurd ? ["Goedgekeurd", "bg-green-100 text-green-800"] : w?.ingestuurd ? ["Ingestuurd", "bg-amber-100 text-amber-800"] : totaal ? ["Bezig", "bg-slate-100 text-slate-600"] : ["Leeg", "bg-slate-50 text-slate-400"];
+          return (
+            <details key={m} className="border-b border-slate-100 last:border-0">
+              <summary className="grid cursor-pointer list-none grid-cols-[1fr_repeat(7,2.2rem)_3.5rem] items-center gap-1 px-3 py-3 text-sm hover:bg-slate-50 md:grid-cols-[1fr_repeat(7,3rem)_4rem_9rem] [&::-webkit-details-marker]:hidden">
+                <span className="truncate font-semibold">{m} <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold md:hidden ${status[1]}`}>{status[0]}</span></span>
+                {perDag.map((u, i) => <span key={i} className="text-center tabular-nums text-slate-700">{u ? uurTekst(u) : "–"}</span>)}
+                <span className="text-right font-bold tabular-nums">{uurTekst(totaal)}</span>
+                <span className="hidden justify-end md:flex">
+                  {w?.ingestuurd && !w.goedgekeurd
+                    ? <button onClick={(e) => { e.preventDefault(); bewaar(k, { ...w, goedgekeurd: true }); }} className="flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1 text-xs font-bold text-white"><Check className="size-3.5" /> Goedkeuren</button>
+                    : <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${status[1]}`}>{status[0]}</span>}
+                </span>
+              </summary>
+              <div className="space-y-1 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {(w?.regels.length ?? 0) === 0 ? <p className="text-slate-500">Nog niets ingevuld.</p> : w!.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => (
+                  <p key={i}><span className="font-semibold">{T.nl.dagen[r.dag]}</span> · {r.klant} · {uurTekst(r.uren)}{r.notitie ? ` · ${r.notitie}` : ""}</p>
+                ))}
+                {w?.ingestuurd && !w.goedgekeurd && <button onClick={() => bewaar(k, { ...w, goedgekeurd: true })} className="mt-2 flex items-center gap-1 rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white md:hidden"><Check className="size-4" /> Goedkeuren</button>}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+      <p className="text-xs text-slate-500">Tik op een monteur voor de details per dag.</p>
+    </main>
+  );
+}
+
+/* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
+function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
+  const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
+  const [open, setOpen] = useState<null | { monteur: string; dag: number }>(null);
+  const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
+  const vandaag = (new Date().getDay() + 6) % 7;
+  const ditIsDezeWeek = maandagVan(new Date()).getTime() === maandag.getTime();
+  const kort = (k: string) => k.split(", ").slice(1).join(", ") || k;
+  return (
+    <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-8">
+      <h1 className="text-2xl font-bold">Planning</h1>
+      <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>
+
+      {ditIsDezeWeek && vandaag < 6 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="mb-2 font-bold">Vandaag aan het werk</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {MONTEURS.map((m) => {
+              const p = plan[planSleutel(m, maandag, vandaag)];
+              return (
+                <li key={m} className={`rounded-xl p-3 text-sm ${p ? "bg-blue-50" : "bg-slate-50 text-slate-400"}`}>
+                  <span className="font-bold text-slate-900">{m}</span><br />{p ? kort(p.klant) : "Niet ingepland"}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
-      <div className={`${kaart} overflow-x-auto`}>
-        <h2 className="border-b border-slate-100 p-4 font-bold">Certificaten per monteur</h2>
-        <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="p-3">Monteur</th>{CERT_SOORTEN.map((s) => <th key={s} className="p-3">{s}</th>)}</tr></thead>
+
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+        <table className="w-full min-w-[720px] table-fixed text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+              <th className="w-28 p-3">Monteur</th>
+              {dagen.map((d, i) => { const dt = new Date(maandag); dt.setDate(dt.getDate() + i); return <th key={d} className={`p-3 ${ditIsDezeWeek && i === vandaag ? "text-[#1E5079]" : ""}`}>{d} {dt.getDate()}</th>; })}
+            </tr>
+          </thead>
           <tbody>
             {MONTEURS.map((m) => (
-              <tr key={m} className="border-t border-slate-50">
+              <tr key={m} className="border-b border-slate-100 last:border-0">
                 <td className="p-3 font-semibold">{m}</td>
-                {CERT_SOORTEN.map((s) => {
-                  const c = certVan(m, s);
-                  const st = certStatus(c);
-                  return <td key={s} className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${stKleur[st]}`}>{stTekst[st]}</span>{c && <p className="mt-1 text-xs text-slate-500">tot {datumNL(c.verloopt)}</p>}</td>;
+                {dagen.map((_, d) => {
+                  const p = plan[planSleutel(m, maandag, d)];
+                  return (
+                    <td key={d} className="p-1.5 align-top">
+                      <button onClick={() => setOpen({ monteur: m, dag: d })} className={`h-full min-h-16 w-full rounded-lg p-2 text-left text-xs ${p ? "bg-blue-50 hover:bg-blue-100" : "border border-dashed border-slate-200 text-slate-400 hover:bg-slate-50"}`}>
+                        {p ? <><span className="block font-semibold text-slate-900">{kort(p.klant)}</span>{p.instructie && <span className="mt-0.5 line-clamp-2 block text-slate-600">{p.instructie}</span>}</> : "+"}
+                      </button>
+                    </td>
+                  );
                 })}
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="border-t border-slate-100 p-3"><button className={grijs} onClick={() => toon("Certificaat uploaden (voorbeeld)")}><Plus className="mr-1 inline size-4" />Certificaat toevoegen</button></div>
       </div>
-      <div className={kaart}>
-        <h2 className="border-b border-slate-100 p-4 font-bold">Controle bij projectstart en delen</h2>
-        {PROJECTEN.filter((p) => p.kolom !== "Gefactureerd").map((p) => {
-          const eisen = VEREIST[p.id] ?? [];
-          const team = TEAM[p.id] ?? [];
-          const fout = team.flatMap((m) => eisen.filter((s) => { const st = certStatus(certVan(m, s)); return st === "verlopen" || st === "ontbreekt"; }).map((s) => `${m}: ${s}`));
-          return (
-            <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 text-sm last:border-0">
-              <div className="min-w-0">
-                <p className="font-bold">{p.naam}</p>
-                <p className="text-slate-500">Vereist: {eisen.join(", ")} · Team: {team.join(", ")}</p>
-                {fout.length === 0 ? <p className="mt-1 font-semibold text-green-700">Alles in orde: team is gecertificeerd.</p> : <p className="mt-1 font-semibold text-red-700">Niet in orde: {fout.join(" · ")}</p>}
-              </div>
-              <div className="flex gap-2"><a href={`/deel/${p.id}`} target="_blank" className={grijs}>Bekijken</a><button className={blauw} onClick={() => deel(p.id)}>Delen</button></div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      <p className="text-xs text-slate-500">Tik op een vak om een klant en een opdracht te plannen. De monteur ziet het meteen op zijn telefoon.</p>
+
+      {open && <PlanVenster monteur={open.monteur} dag={open.dag} maandag={maandag} plan={plan} zetPlan={zetPlan} sluit={() => setOpen(null)} />}
+    </main>
   );
 }
 
-/* ------------------------------ Startscherm ------------------------------ */
-function Inloggen({ kies }: { kies: (r: "monteur" | "beheer") => void }) {
-  const [taal, setTaal] = useState<Taal>("nl");
-  const w = taal === "nl"
-    ? { sub: "Uren, werkbonnen en facturen op één plek.", vraag: "Wie ben je?", beheer: "Ik ben beheerder", beheerSub: "Overzicht, bord, facturen, certificaten", monteur: "Ik ben monteur", monteurSub: "Inchecken, uitchecken en mijn uren", voorbeeld: "Dit is een voorbeeld: klik op een knop om te beginnen." }
-    : { sub: "Godziny, karty pracy i faktury w jednym miejscu.", vraag: "Kim jesteś?", beheer: "Jestem administratorem", beheerSub: "Przegląd, tablica, faktury, certyfikaty", monteur: "Jestem monterem", monteurSub: "Rozpocznij pracę, zakończ pracę i moje godziny", voorbeeld: "To jest przykład: kliknij przycisk, aby zacząć." };
+function PlanVenster({ monteur, dag, maandag, plan, zetPlan, sluit }: { monteur: string; dag: number; maandag: Date; sluit: () => void } & ReturnType<typeof usePlanning>) {
+  const k = planSleutel(monteur, maandag, dag);
+  const [klant, setKlant] = useState(plan[k]?.klant ?? KLANTEN[0]);
+  const [instructie, setInstructie] = useState(plan[k]?.instructie ?? "");
+  const [helewWeek, setHeleWeek] = useState(false);
+  const dagNaam = T.nl.dagen[dag];
+  const opslaan = () => {
+    const dagenLijst = helewWeek ? [0, 1, 2, 3, 4] : [dag];
+    dagenLijst.forEach((d) => zetPlan(planSleutel(monteur, maandag, d), { klant, instructie }));
+    sluit();
+  };
   return (
-    <div className="grid min-h-screen place-items-center px-4 py-8">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <span className="grid size-12 place-items-center rounded-2xl bg-blue-600 text-white"><Clock className="size-6" /></span>
-            <h1 className="mt-4 text-3xl font-bold">Werkbonnen</h1>
-            <p className="mt-1 text-slate-600">{w.sub}</p>
-          </div>
-          <div className="flex rounded-lg bg-slate-200 p-0.5 text-xs font-bold">
-            {(["nl", "pl"] as const).map((k) => <button key={k} onClick={() => setTaal(k)} className={`rounded-md px-3 py-1 uppercase ${taal === k ? "bg-white shadow-sm" : "text-slate-500"}`}>{k}</button>)}
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center" onClick={sluit}>
+      <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{monteur} · {dagNaam}</h3>
+          <button onClick={sluit} aria-label="Sluiten" className="p-1 text-slate-500"><X className="size-5" /></button>
         </div>
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">{w.vraag}</p>
-        <div className="space-y-3">
-          <button onClick={() => kies("beheer")} className="flex w-full items-center gap-4 rounded-2xl bg-blue-600 p-5 text-left text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]">
-            <LayoutDashboard className="size-8 shrink-0" />
-            <span><span className="block text-xl font-bold">{w.beheer}</span><span className="text-sm text-blue-100">{w.beheerSub}</span></span>
-          </button>
-          <button onClick={() => kies("monteur")} className="flex w-full items-center gap-4 rounded-2xl bg-green-600 p-5 text-left text-white shadow-sm transition hover:bg-green-700 active:scale-[0.98]">
-            <Play className="size-8 shrink-0" />
-            <span><span className="block text-xl font-bold">{w.monteur}</span><span className="text-sm text-green-100">{w.monteurSub}</span></span>
-          </button>
+        <label className="block text-sm font-semibold">Klant / adres
+          <select value={klant} onChange={(e) => setKlant(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-base font-normal">
+            {KLANTEN.map((kl) => <option key={kl}>{kl}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-semibold">Opdracht voor de monteur
+          <textarea value={instructie} onChange={(e) => setInstructie(e.target.value)} rows={3} placeholder="Bijv. 3 kozijnen plaatsen achterkant, sleutel bij de buren." className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-base font-normal" />
+        </label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={helewWeek} onChange={(e) => setHeleWeek(e.target.checked)} className="size-4" /> Hele week (ma t/m vr) hetzelfde</label>
+        <div className="flex gap-2 pt-1">
+          {plan[k] && <button onClick={() => { zetPlan(k, null); sluit(); }} className="rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700">Weghalen</button>}
+          <button onClick={opslaan} className="flex-1 rounded-xl bg-[#1E5079] py-3 font-bold text-white">Opslaan</button>
         </div>
-        <p className="mt-6 text-center text-sm text-slate-500">{w.voorbeeld}</p>
       </div>
     </div>
   );

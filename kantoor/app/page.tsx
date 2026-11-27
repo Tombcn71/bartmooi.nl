@@ -103,8 +103,8 @@ function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => v
       </div>
       {!wie && (
         <>
-          <button onClick={() => setWie("monteur")} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
-          <button onClick={() => setWie("kantoor")} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
+          <button onClick={() => kies({ soort: "monteur", naam: "Piotr" })} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
+          <button onClick={() => kies({ soort: "bart" })} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
         </>
       )}
       {wie && (

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
-import { Check, ChevronLeft, ChevronRight, Download, HardHat, Plus, Send, UserCog } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, HardHat, Plus, Send, UserCog } from "lucide-react";
 
 /*
  * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
@@ -321,21 +321,13 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
   const dagen = T.nl.dagen.map((d) => d.slice(0, 2));
   const rijen = useMemo(() => MONTEURS.map((m) => ({ m, k: sleutel(m, maandag), w: data[sleutel(m, maandag)] })), [data, maandag]);
 
-  function download() {
-    const kop = ["Monteur", "Dag", "Klant", "Uren", "Notitie", "Status"];
-    const regels = rijen.flatMap(({ m, w }) => (w?.regels ?? []).map((r) => [m, T.nl.dagen[r.dag], r.klant, String(r.uren).replace(".", ","), r.notitie, w!.goedgekeurd ? "goedgekeurd" : w!.ingestuurd ? "ingestuurd" : "concept"]));
-    const csv = [kop, ...regels].map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
-    a.download = `uren-week-${weeknummer(maandag)}.csv`;
-    a.click();
-  }
+
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8">
       <div className="flex items-center justify-between">
         <button onClick={terug} className="text-sm text-slate-600">← Andere persoon</button>
-        <button onClick={download} className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"><Download className="size-4" /> Download (Excel)</button>
+        
       </div>
       <h1 className="text-2xl font-bold">Uren van de monteurs</h1>
       <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
+import { FacturenKantoor, MijnFacturen, STANDAARD_TARIEF } from "./facturen";
 import { Check, ChevronLeft, ChevronRight, HardHat, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
 /*
@@ -15,10 +16,13 @@ type Regel = { dag: number; klant: string; uren: number; notitie: string };
 type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
 
 /* ---------- het team van Bart: wie er werken (Bart stelt dit zelf in) ---------- */
-type Lid = { naam: string; telefoon: string };
+type Lid = { naam: string; telefoon: string; bedrijf?: string; kvk?: string; btw?: string; iban?: string; tarief?: number };
 const STANDAARD_TEAM: Lid[] = [
-  { naam: "Piotr", telefoon: "06 1111 1111" }, { naam: "Marek", telefoon: "06 2222 2222" }, { naam: "Tomasz", telefoon: "06 3333 3333" },
-  { naam: "Kamil", telefoon: "06 4444 4444" }, { naam: "Paweł", telefoon: "06 5555 5555" },
+  { naam: "Piotr", telefoon: "06 1111 1111", bedrijf: "PN Montage", kvk: "81234567", btw: "NL862345678B01", iban: "NL12 INGB 0001 2345 67", tarief: 45 },
+  { naam: "Marek", telefoon: "06 2222 2222", bedrijf: "Marek Bouw", kvk: "82345678", btw: "NL863456789B01", iban: "NL34 RABO 0123 4567 89", tarief: 42.5 },
+  { naam: "Tomasz", telefoon: "06 3333 3333", bedrijf: "TK Kozijnwerk", kvk: "83456789", btw: "NL864567890B01", iban: "NL56 ABNA 0234 5678 90", tarief: 45 },
+  { naam: "Kamil", telefoon: "06 4444 4444", bedrijf: "Kamil Klusbedrijf", kvk: "84567890", btw: "NL865678901B01", iban: "NL78 INGB 0003 4567 89", tarief: 40 },
+  { naam: "Paweł", telefoon: "06 5555 5555", bedrijf: "PW Afbouw", kvk: "85678901", btw: "NL866789012B01", iban: "NL90 BUNQ 2045 6789 01", tarief: 42.5 },
 ];
 let teamNu: Lid[] = STANDAARD_TEAM;
 const luisteraars = new Set<() => void>();
@@ -122,7 +126,12 @@ function useOpslag() {
       else {
         // Een paar voorbeelduren, zodat Barts scherm niet leeg is.
         const m = maandagVan(new Date());
+        const vorige = new Date(m); vorige.setDate(vorige.getDate() - 7);
+        const vol = (k: string, u: number) => [0, 1, 2, 3, 4].map((dag) => ({ dag, klant: k, uren: u, notitie: "" }));
         setData({
+          [sleutel("Piotr", vorige)]: { ingestuurd: true, goedgekeurd: true, regels: vol(KLANTEN[0], 8) },
+          [sleutel("Marek", vorige)]: { ingestuurd: true, goedgekeurd: true, regels: vol(KLANTEN[0], 7.5) },
+          [sleutel("Tomasz", vorige)]: { ingestuurd: true, goedgekeurd: true, regels: vol(KLANTEN[1], 8) },
           [sleutel("Piotr", m)]: { ingestuurd: true, goedgekeurd: false, regels: [0, 1, 2].map((dag) => ({ dag, klant: KLANTEN[0], uren: 8, notitie: dag === 0 ? "Oude kozijnen eruit" : "" })).concat([{ dag: 3, klant: KLANTEN[1], uren: 6, notitie: "Rolluiken" }]) },
           [sleutel("Marek", m)]: { ingestuurd: false, goedgekeurd: false, regels: [{ dag: 0, klant: KLANTEN[2], uren: 7.5, notitie: "" }] },
         });
@@ -268,26 +277,28 @@ function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => vo
   const tab = (["uren", "overzicht", "cert"].includes(hash.split("/")[1]) ? hash.split("/")[1] : "uren") as "uren" | "overzicht" | "cert";
   const setTab = (t: string) => ga("monteur/" + t);
   const pl = p.taal === "pl";
+  const { leden } = useTeam();
   const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
   return (
     <div>
       <div className="mx-auto max-w-md px-4 pt-4"><Tabs tabs={tabs} actief={tab} zet={setTab} /></div>
       {tab === "uren" && <Monteur {...p} />}
-      {tab === "overzicht" && <main className="mx-auto max-w-md p-4"><MijnOverzicht naam={p.naam} taal={p.taal} data={p.data} /></main>}
+      {tab === "overzicht" && <main className="mx-auto max-w-md space-y-6 p-4"><MijnOverzicht naam={p.naam} taal={p.taal} data={p.data} /><MijnFacturen naam={p.naam} data={p.data} leden={leden} pl={pl} /></main>}
       {tab === "cert" && <main className="mx-auto max-w-md p-4"><MijnCertificaten naam={p.naam} pl={pl} /></main>}
     </div>
   );
 }
 
 function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
-  const { team } = useTeam();
+  const { team, leden } = useTeam();
+  const { projecten } = useProjecten();
   const [hash, ga] = useHash();
-  const tab = (["plan", "uren", "cert", "projecten", "team"].includes(hash.split("/")[1]) ? hash.split("/")[1] : "plan") as "plan" | "uren" | "cert" | "projecten" | "team";
+  const tab = (["plan", "uren", "facturen", "cert", "projecten", "team"].includes(hash.split("/")[1]) ? hash.split("/")[1] : "plan") as "plan" | "uren" | "facturen" | "cert" | "projecten" | "team";
   const setTab = (t: string) => ga("kantoor/" + t);
   return (
     <div>
-      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"], ["projecten", "Projecten"], ["team", "Team"]]} actief={tab} zet={setTab} /></div>
-      {tab === "team" ? <TeamBeheer /> : tab === "projecten" ? <ProjectBeheer /> : tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={team} /></main>}
+      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["facturen", "Facturen"], ["cert", "Certificaten"], ["projecten", "Projecten"], ["team", "Team"]]} actief={tab} zet={setTab} /></div>
+      {tab === "facturen" ? <FacturenKantoor data={p.data} leden={leden} projecten={projecten} /> : tab === "team" ? <TeamBeheer /> : tab === "projecten" ? <ProjectBeheer /> : tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={team} /></main>}
     </div>
   );
 }
@@ -633,16 +644,29 @@ function TeamBeheer() {
   const [naam, setNaam] = useState("");
   const [telefoon, setTelefoon] = useState("");
   const [weg, setWeg] = useState<string | null>(null);
+  const [gegevens, setGegevens] = useState<string | null>(null);
   const veld = "w-full rounded-xl border border-slate-300 bg-white p-3 text-base";
+  const pas = (naam: string, v: Partial<Lid>) => zetTeam(leden.map((x) => (x.naam === naam ? { ...x, ...v } : x)));
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4 md:p-8">
       <h1 className="text-2xl font-bold">Team</h1>
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
         {leden.length === 0 && <p className="p-4 text-slate-500">Nog niemand in het team.</p>}
         {leden.map((l) => (
-          <div key={l.naam} className="flex items-center gap-3 border-b border-slate-100 p-4 last:border-0">
+          <div key={l.naam} className="flex items-start gap-3 border-b border-slate-100 p-4 last:border-0">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1E5079] font-bold text-white">{l.naam[0]}</span>
-            <div className="min-w-0 flex-1"><p className="font-semibold">{l.naam}</p><p className="text-sm text-slate-500">{l.telefoon || "Geen telefoonnummer"}</p></div>
+            <div className="min-w-0 flex-1"><p className="font-semibold">{l.naam}</p><p className="text-sm text-slate-500">{l.telefoon || "Geen telefoonnummer"} · {l.bedrijf || "geen bedrijf"} · €{(l.tarief ?? STANDAARD_TARIEF).toLocaleString("nl-NL")}/u</p>
+              <button onClick={() => setGegevens(gegevens === l.naam ? null : l.naam)} className="mt-1 text-sm font-semibold text-[#1E5079] underline">{gegevens === l.naam ? "Klaar" : "Bedrijfsgegevens"}</button>
+              {gegevens === l.naam && (
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <label className="text-xs font-semibold text-slate-600">Bedrijfsnaam<input defaultValue={l.bedrijf} onBlur={(e) => pas(l.naam, { bedrijf: e.target.value.trim() })} className={veld + " mt-1"} /></label>
+                  <label className="text-xs font-semibold text-slate-600">Uurtarief (€)<input defaultValue={l.tarief ?? STANDAARD_TARIEF} inputMode="decimal" onBlur={(e) => pas(l.naam, { tarief: parseFloat(e.target.value.replace(",", ".")) || STANDAARD_TARIEF })} className={veld + " mt-1"} /></label>
+                  <label className="text-xs font-semibold text-slate-600">KvK-nummer<input defaultValue={l.kvk} onBlur={(e) => pas(l.naam, { kvk: e.target.value.trim() })} className={veld + " mt-1"} /></label>
+                  <label className="text-xs font-semibold text-slate-600">Btw-nummer<input defaultValue={l.btw} onBlur={(e) => pas(l.naam, { btw: e.target.value.trim() })} className={veld + " mt-1"} /></label>
+                  <label className="text-xs font-semibold text-slate-600 sm:col-span-2">IBAN<input defaultValue={l.iban} onBlur={(e) => pas(l.naam, { iban: e.target.value.trim() })} className={veld + " mt-1"} /></label>
+                </div>
+              )}
+            </div>
             {weg === l.naam ? (
               <span className="flex gap-2">
                 <button onClick={() => { zetTeam(leden.filter((x) => x.naam !== l.naam)); setWeg(null); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white">Ja, weghalen</button>

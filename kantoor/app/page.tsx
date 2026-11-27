@@ -167,8 +167,23 @@ function usePlanning() {
   return { plan, zetPlan };
 }
 
+/* ---------- navigatie via de adresbalk, zodat de terugknop van de browser werkt ---------- */
+function useHash() {
+  const [h, setH] = useState("");
+  useEffect(() => {
+    const f = () => setH(location.hash.slice(1));
+    f();
+    addEventListener("hashchange", f);
+    return () => removeEventListener("hashchange", f);
+  }, []);
+  return [h, (n: string) => { if (n !== location.hash.slice(1)) location.hash = n; }] as const;
+}
+
 export default function Start() {
-  const [rol, setRol] = useState<null | { soort: "monteur"; naam: string } | { soort: "bart" }>(null);
+  const [hash, ga] = useHash();
+  const deel = hash.split("/")[0];
+  const rol: null | { soort: "monteur"; naam: string } | { soort: "bart" } = deel === "monteur" ? { soort: "monteur", naam: "Piotr" } : deel === "kantoor" ? { soort: "bart" } : null;
+  const setRol = (r: typeof rol) => (r ? ga(r.soort === "bart" ? "kantoor" : "monteur") : ga(""));
   const [taal, setTaal] = useState<Taal>("nl");
   const opslag = { ...useOpslag(), ...usePlanning() };
   const t = T[taal];
@@ -240,7 +255,9 @@ function Tabs<T extends string>({ tabs, actief, zet }: { tabs: [T, string][]; ac
 }
 
 function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
-  const [tab, setTab] = useState<"uren" | "overzicht" | "cert">("uren");
+  const [hash, ga] = useHash();
+  const tab = (["uren", "overzicht", "cert"].includes(hash.split("/")[1]) ? hash.split("/")[1] : "uren") as "uren" | "overzicht" | "cert";
+  const setTab = (t: string) => ga("monteur/" + t);
   const pl = p.taal === "pl";
   const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
   return (
@@ -255,7 +272,9 @@ function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => vo
 
 function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
   const { team } = useTeam();
-  const [tab, setTab] = useState<"plan" | "uren" | "cert" | "projecten" | "team">("plan");
+  const [hash, ga] = useHash();
+  const tab = (["plan", "uren", "cert", "projecten", "team"].includes(hash.split("/")[1]) ? hash.split("/")[1] : "plan") as "plan" | "uren" | "cert" | "projecten" | "team";
+  const setTab = (t: string) => ga("kantoor/" + t);
   return (
     <div>
       <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"], ["projecten", "Projecten"], ["team", "Team"]]} actief={tab} zet={setTab} /></div>

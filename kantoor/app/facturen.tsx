@@ -152,7 +152,7 @@ export function FacturenKantoor({ data, leden, projecten }: { data: Record<strin
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Facturen</h1>
         <div className="flex rounded-xl bg-slate-200/70 p-1 text-sm font-semibold">
-          {([["in", "Betalen aan monteurs"], ["project", "Ontvangen van projecten"]] as const).map(([k, t]) => (
+          {([["in", "Betalen aan monteurs"], ["project", "Factureren aan opdrachtgevers"]] as const).map(([k, t]) => (
             <button key={k} onClick={() => setDeel(k)} className={`rounded-lg px-3 py-1.5 ${deel === k ? "bg-white text-[#1E5079] shadow-sm" : "text-slate-600"}`}>{t}</button>
           ))}
         </div>
@@ -189,13 +189,13 @@ export function FacturenKantoor({ data, leden, projecten }: { data: Record<strin
       ) : (
         <div className="space-y-3">
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">Ga je ontvangen van projecten</p><p className="text-2xl font-bold text-[#1E5079]">{eur(perProject.reduce((s, x) => s + (klant[x.p] ?? 0), 0))}</p></div>
+          <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">Factureer je aan opdrachtgevers</p><p className="text-2xl font-bold text-[#1E5079]">{eur(perProject.reduce((s, x) => s + (klant[x.p] ?? 0), 0))}</p></div>
           <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">Kost je aan monteurs</p><p className="text-2xl font-bold">{eur(perProject.reduce((s, x) => s + x.kosten, 0))}</p></div>
           <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">Houd je over</p><p className="text-2xl font-bold text-green-700">{eur(perProject.reduce((s, x) => s + (klant[x.p] ?? 0) - x.kosten, 0))}</p></div>
         </div>
         <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="border-b border-slate-200 text-left text-xs text-slate-500"><th className="p-3">Project</th><th className="p-3 text-right">Uren</th><th className="p-3 text-right">Ontvang je</th><th className="p-3 text-right">Betaal je monteurs</th><th className="p-3 text-right">Houd je over</th></tr></thead>
+            <thead><tr className="border-b border-slate-200 text-left text-xs text-slate-500"><th className="p-3">Project / opdrachtgever</th><th className="p-3 text-right">Uren</th><th className="p-3 text-right">Factureer je</th><th className="p-3 text-right">Betaal je monteurs</th><th className="p-3 text-right">Houd je over</th></tr></thead>
             <tbody>
               {perProject.map(({ p, uren, kosten }) => {
                 const g = klant[p] ?? 0;
@@ -214,7 +214,7 @@ export function FacturenKantoor({ data, leden, projecten }: { data: Record<strin
               })}
             </tbody>
           </table>
-          <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Ontvang je = de prijs die de opdrachtgever betaalt (in te stellen bij Projecten). Betaal je monteurs = goedgekeurde uren × hun uurloon.</p>
+          <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Factureer je = de prijs die je de opdrachtgever rekent (in te stellen bij Projecten). Betaal je monteurs = goedgekeurde uren × hun uurloon.</p>
         </div>
         </div>
       )}

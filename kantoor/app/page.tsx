@@ -190,10 +190,18 @@ export default function Start() {
 
   if (!rol) return <Inloggen taal={taal} setTaal={setTaal} kies={setRol} />;
 
-  return rol.soort === "monteur" ? (
-    <MonteurOmgeving naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
-  ) : (
-    <KantoorOmgeving terug={() => setRol(null)} {...opslag} />
+  return (
+    <>
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 pt-3 md:px-8">
+        <button onClick={() => history.back()} aria-label="Terug" className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-[#1E5079]"><ChevronLeft className="size-4" /> {taal === "pl" ? "Wstecz" : "Terug"}</button>
+        <button onClick={() => history.forward()} aria-label="Vooruit" className="flex items-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-[#1E5079]"><ChevronRight className="size-4" /></button>
+      </div>
+      {rol.soort === "monteur" ? (
+        <MonteurOmgeving naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
+      ) : (
+        <KantoorOmgeving terug={() => setRol(null)} {...opslag} />
+      )}
+    </>
   );
 }
 

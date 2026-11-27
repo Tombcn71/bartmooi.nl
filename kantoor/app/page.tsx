@@ -13,7 +13,7 @@ type Taal = "nl" | "pl";
 type Regel = { dag: number; klant: string; uren: number; notitie: string };
 type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
 
-const MONTEURS = ["Piotr", "Marek", "Tomasz"];
+const MONTEURS = ["Piotr", "Marek", "Tomasz", "Kamil", "Paweł", "Jakub", "Michał", "Łukasz", "Adam", "Bartek", "Krzysztof", "Daniel", "Rafał", "Szymon", "Wojtek"];
 const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, Zeestraat 31", "Van Dijk Bouw, Hoefkade 140"];
 
 const T = {
@@ -75,29 +75,58 @@ export default function Start() {
   const opslag = useOpslag();
   const t = T[taal];
 
-  if (!rol)
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{t.wie}</h1>
-          <TaalKnop taal={taal} setTaal={setTaal} />
-        </div>
-        {MONTEURS.map((m) => (
-          <button key={m} onClick={() => setRol({ soort: "monteur", naam: m })} className="flex items-center gap-3 rounded-2xl bg-white p-5 text-left text-lg font-semibold shadow-sm active:scale-[.99]">
-            <HardHat className="size-6 text-[#1E5079]" /> {m} <span className="ml-auto text-sm font-normal text-slate-500">{t.monteur}</span>
-          </button>
-        ))}
-        <button onClick={() => setRol({ soort: "bart" })} className="mt-4 flex items-center gap-3 rounded-2xl bg-[#1E5079] p-5 text-left text-lg font-semibold text-white shadow-sm">
-          <UserCog className="size-6" /> {t.bart}
-        </button>
-        <p className="mt-6 text-center text-xs text-slate-500">Voorbeeld: straks logt iedereen in met een eigen wachtwoord.</p>
-      </main>
-    );
+  if (!rol) return <Inloggen taal={taal} setTaal={setTaal} kies={setRol} />;
 
   return rol.soort === "monteur" ? (
     <Monteur naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
   ) : (
     <Bart terug={() => setRol(null)} {...opslag} />
+  );
+}
+
+/* ---------- inloggen: eerst monteur of kantoor, dan je gegevens ---------- */
+const MONTEUR_TEL: Record<string, string> = { "0611111111": "Piotr", "0622222222": "Marek", "0633333333": "Tomasz" };
+function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => void; kies: (r: { soort: "monteur"; naam: string } | { soort: "bart" }) => void }) {
+  const [wie, setWie] = useState<null | "monteur" | "kantoor">(null);
+  const [tel, setTel] = useState("");
+  const [code, setCode] = useState("");
+  const [fout, setFout] = useState("");
+  const L = taal === "pl"
+    ? { titel: "Godziny pracy", monteur: "Jestem monterem", kantoor: "Biuro", tel: "Twój numer telefonu", pin: "Kod PIN (4 cyfry)", in: "Zaloguj się", terug: "Wstecz", fout: "Nieprawidłowy numer lub kod." }
+    : { titel: "Werkbonnen", monteur: "Ik ben monteur", kantoor: "Kantoor", tel: "Je telefoonnummer", pin: "Pincode (4 cijfers)", in: "Inloggen", terug: "Terug", fout: "Nummer of pincode klopt niet." };
+  const veld = "w-full rounded-xl border border-slate-300 bg-white p-4 text-lg";
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{L.titel}</h1>
+        <TaalKnop taal={taal} setTaal={setTaal} />
+      </div>
+      {!wie && (
+        <>
+          <button onClick={() => setWie("monteur")} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
+          <button onClick={() => setWie("kantoor")} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
+        </>
+      )}
+      {wie && (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (wie === "kantoor") return code.length > 0 ? kies({ soort: "bart" }) : setFout(L.fout);
+            const naam = MONTEUR_TEL[tel.replace(/\D/g, "")];
+            if (naam && code.length === 4) kies({ soort: "monteur", naam });
+            else setFout(L.fout);
+          }}>
+          <p className="text-lg font-semibold">{wie === "monteur" ? L.monteur : L.kantoor}</p>
+          {wie === "monteur" && <input inputMode="tel" autoComplete="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder={L.tel} className={veld} />}
+          <input inputMode={wie === "monteur" ? "numeric" : undefined} type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder={wie === "monteur" ? L.pin : "Wachtwoord"} maxLength={wie === "monteur" ? 4 : undefined} className={veld} />
+          {fout && <p className="text-sm text-red-600">{fout}</p>}
+          <button className="w-full rounded-xl bg-[#1E5079] p-4 text-lg font-bold text-white">{L.in}</button>
+          <button type="button" onClick={() => { setWie(null); setFout(""); setCode(""); }} className="w-full p-2 text-slate-600">← {L.terug}</button>
+          <p className="pt-4 text-center text-xs text-slate-500">Voorbeeld: monteur Piotr = 0611111111, Marek = 0622222222, Tomasz = 0633333333, elke pincode van 4 cijfers. Kantoor: elk wachtwoord.</p>
+        </form>
+      )}
+    </main>
   );
 }
 
@@ -217,36 +246,37 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
       <h1 className="text-2xl font-bold">Uren van de monteurs</h1>
       <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>
 
-      {rijen.map(({ m, k, w }) => {
-        const perDag = dagen.map((_, d) => (w?.regels ?? []).filter((r) => r.dag === d).reduce((s, r) => s + r.uren, 0));
-        const totaal = perDag.reduce((a, b) => a + b, 0);
-        return (
-          <section key={m} className="rounded-2xl bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-lg font-bold">{m}</h2>
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${w?.goedgekeurd ? "bg-green-100 text-green-800" : w?.ingestuurd ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
-                {w?.goedgekeurd ? "Goedgekeurd" : w?.ingestuurd ? "Ingestuurd, wacht op jou" : totaal ? "Nog niet ingestuurd" : "Niets ingevuld"}
-              </span>
-              <span className="ml-auto text-lg font-bold">{totaal} uur</span>
-              {w?.ingestuurd && !w.goedgekeurd && (
-                <button onClick={() => bewaar(k, { ...w, goedgekeurd: true })} className="flex items-center gap-1 rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white"><Check className="size-4" /> Goedkeuren</button>
-              )}
-            </div>
-            <div className="mt-3 grid grid-cols-7 gap-1 text-center text-sm">
-              {dagen.map((d, i) => (
-                <div key={d} className="rounded-lg bg-slate-50 p-2"><div className="text-xs text-slate-500">{d}</div><div className="font-semibold">{perDag[i] || "–"}</div></div>
-              ))}
-            </div>
-            {(w?.regels.length ?? 0) > 0 && (
-              <ul className="mt-3 space-y-1 text-sm text-slate-700">
-                {w!.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => (
-                  <li key={i}><span className="font-semibold">{T.nl.dagen[r.dag]}</span> · {r.klant} · {r.uren} uur{r.notitie ? ` · ${r.notitie}` : ""}</li>
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="grid grid-cols-[1fr_repeat(7,2.2rem)_3.5rem] items-center gap-1 border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 md:grid-cols-[1fr_repeat(7,3rem)_4rem_9rem]">
+          <span>Monteur</span>{dagen.map((d) => <span key={d} className="text-center">{d}</span>)}<span className="text-right">Totaal</span><span className="hidden md:block" />
+        </div>
+        {rijen.map(({ m, k, w }) => {
+          const perDag = dagen.map((_, d) => (w?.regels ?? []).filter((r) => r.dag === d).reduce((s, r) => s + r.uren, 0));
+          const totaal = perDag.reduce((a, b) => a + b, 0);
+          const status = w?.goedgekeurd ? ["Goedgekeurd", "bg-green-100 text-green-800"] : w?.ingestuurd ? ["Ingestuurd", "bg-amber-100 text-amber-800"] : totaal ? ["Bezig", "bg-slate-100 text-slate-600"] : ["Leeg", "bg-slate-50 text-slate-400"];
+          return (
+            <details key={m} className="border-b border-slate-100 last:border-0">
+              <summary className="grid cursor-pointer list-none grid-cols-[1fr_repeat(7,2.2rem)_3.5rem] items-center gap-1 px-3 py-3 text-sm hover:bg-slate-50 md:grid-cols-[1fr_repeat(7,3rem)_4rem_9rem] [&::-webkit-details-marker]:hidden">
+                <span className="truncate font-semibold">{m} <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold md:hidden ${status[1]}`}>{status[0]}</span></span>
+                {perDag.map((u, i) => <span key={i} className="text-center tabular-nums text-slate-700">{u || "–"}</span>)}
+                <span className="text-right font-bold tabular-nums">{totaal}</span>
+                <span className="hidden justify-end md:flex">
+                  {w?.ingestuurd && !w.goedgekeurd
+                    ? <button onClick={(e) => { e.preventDefault(); bewaar(k, { ...w, goedgekeurd: true }); }} className="flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1 text-xs font-bold text-white"><Check className="size-3.5" /> Goedkeuren</button>
+                    : <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${status[1]}`}>{status[0]}</span>}
+                </span>
+              </summary>
+              <div className="space-y-1 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {(w?.regels.length ?? 0) === 0 ? <p className="text-slate-500">Nog niets ingevuld.</p> : w!.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => (
+                  <p key={i}><span className="font-semibold">{T.nl.dagen[r.dag]}</span> · {r.klant} · {r.uren} uur{r.notitie ? ` · ${r.notitie}` : ""}</p>
                 ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+                {w?.ingestuurd && !w.goedgekeurd && <button onClick={() => bewaar(k, { ...w, goedgekeurd: true })} className="mt-2 flex items-center gap-1 rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white md:hidden"><Check className="size-4" /> Goedkeuren</button>}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+      <p className="text-xs text-slate-500">Tik op een monteur voor de details per dag.</p>
     </main>
   );
 }

@@ -643,6 +643,7 @@ function TeamBeheer() {
   const { leden, zetTeam } = useTeam();
   const [naam, setNaam] = useState("");
   const [telefoon, setTelefoon] = useState("");
+  const [tarief, setTarief] = useState("");
   const [weg, setWeg] = useState<string | null>(null);
   const [gegevens, setGegevens] = useState<string | null>(null);
   const veld = "w-full rounded-xl border border-slate-300 bg-white p-3 text-base";
@@ -684,13 +685,14 @@ function TeamBeheer() {
           e.preventDefault();
           const n = naam.trim();
           if (!n || leden.some((l) => l.naam.toLowerCase() === n.toLowerCase())) return;
-          zetTeam([...leden, { naam: n, telefoon: telefoon.trim() }]);
-          setNaam(""); setTelefoon("");
+          zetTeam([...leden, { naam: n, telefoon: telefoon.trim(), tarief: parseFloat(tarief.replace(",", ".")) || STANDAARD_TARIEF }]);
+          setNaam(""); setTelefoon(""); setTarief("");
         }}>
         <p className="font-bold">Iemand toevoegen</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="Naam" className={veld} />
           <input value={telefoon} onChange={(e) => setTelefoon(e.target.value)} placeholder="Telefoonnummer" inputMode="tel" className={veld} />
+          <label className="text-sm font-semibold sm:col-span-2">Uurloon (€ per uur)<input value={tarief} onChange={(e) => setTarief(e.target.value.replace(/[^\d,.]/g, ""))} placeholder={`Bijv. ${STANDAARD_TARIEF}`} inputMode="decimal" className={veld + " mt-1"} /></label>
         </div>
         <button disabled={!naam.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E5079] p-3 font-bold text-white disabled:opacity-40"><Plus className="size-4" /> Toevoegen</button>
         <p className="text-xs text-slate-500">Straks krijgt een nieuwe monteur een sms met zijn eigen link naar de app.</p>

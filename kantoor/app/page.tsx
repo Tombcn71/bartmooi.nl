@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
-import { FacturenKantoor, MijnFacturen, STANDAARD_TARIEF } from "./facturen";
+import { FacturenKantoor, MijnFacturen, STANDAARD_TARIEF, useProjectPrijs } from "./facturen";
 import { Check, ChevronLeft, ChevronRight, HardHat, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
 /*
@@ -702,6 +702,8 @@ function TeamBeheer() {
 /* ---------- Bart: zijn projecten instellen ---------- */
 function ProjectBeheer() {
   const { projecten, zetProjecten, info, zetInfo, periode, zetPeriode } = useProjecten();
+  const [prijs, zetPrijs] = useProjectPrijs();
+  const [nieuwPrijs, setNieuwPrijs] = useState("");
   const [start, setStart] = useState("");
   const [eind, setEind] = useState("");
   const [wat, setWat] = useState("");
@@ -725,6 +727,7 @@ function ProjectBeheer() {
                   <input type="date" value={periode[p]?.start ?? ""} onChange={(e) => zetPeriode({ ...periode, [p]: { start: e.target.value, eind: periode[p]?.eind ?? "" } })} className="rounded-lg border border-slate-300 px-2 py-1" />
                   <span className="text-slate-400">tot</span>
                   <input type="date" value={periode[p]?.eind ?? ""} onChange={(e) => zetPeriode({ ...periode, [p]: { start: periode[p]?.start ?? "", eind: e.target.value } })} className="rounded-lg border border-slate-300 px-2 py-1" />
+                  <span className="ml-auto inline-flex items-center gap-1 font-semibold">€<input inputMode="numeric" value={prijs[p] || ""} placeholder="Prijs" onChange={(e) => zetPrijs({ ...prijs, [p]: parseInt(e.target.value.replace(/\D/g, "") || "0", 10) })} className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right" /></span>
                 </div>
                 {bewerk === p ? (
                   <textarea autoFocus defaultValue={info[p] ?? ""} rows={3} onBlur={(e) => { zetInfo({ ...info, [p]: e.target.value.trim() }); setBewerk(null); }} className="mt-2 w-full rounded-xl border border-slate-300 p-2 text-sm" />
@@ -752,7 +755,8 @@ function ProjectBeheer() {
           zetProjecten([...projecten, n]);
           if (wat.trim()) zetInfo({ ...info, [n]: wat.trim() });
           if (start || eind) zetPeriode({ ...periode, [n]: { start, eind } });
-          setKlant(""); setAdres(""); setWat(""); setStart(""); setEind("");
+          if (nieuwPrijs) zetPrijs({ ...prijs, [n]: parseInt(nieuwPrijs, 10) });
+          setKlant(""); setAdres(""); setWat(""); setStart(""); setEind(""); setNieuwPrijs("");
         }}>
         <p className="font-bold">Project toevoegen</p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -764,6 +768,7 @@ function ProjectBeheer() {
           <label className="text-sm font-semibold">Begindatum<input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={veld + " mt-1"} /></label>
           <label className="text-sm font-semibold">Einddatum<input type="date" value={eind} min={start || undefined} onChange={(e) => setEind(e.target.value)} className={veld + " mt-1"} /></label>
         </div>
+        <label className="block text-sm font-semibold">Prijs voor de opdrachtgever (€, excl. btw)<input inputMode="numeric" value={nieuwPrijs} onChange={(e) => setNieuwPrijs(e.target.value.replace(/\D/g, ""))} placeholder="Bijv. 4500" className={veld + " mt-1"} /></label>
         <button disabled={!klant.trim() || !adres.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E5079] p-3 font-bold text-white disabled:opacity-40"><Plus className="size-4" /> Toevoegen</button>
         <p className="text-xs text-slate-500">Een nieuw project staat meteen in het planbord en bij de monteurs in de lijst.</p>
       </form>

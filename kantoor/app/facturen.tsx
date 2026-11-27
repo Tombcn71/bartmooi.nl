@@ -52,6 +52,7 @@ function useBewaard<T>(sleutel: string, begin: T) {
   const zet = (n: T) => { setV(n); try { localStorage.setItem(sleutel, JSON.stringify(n)); } catch {} };
   return [v, zet] as const;
 }
+export const useProjectPrijs = () => useBewaard<Record<string, number>>("bm-gefactureerd", {});
 export const useBetaald = () => useBewaard<Record<string, boolean>>("bm-betaald", {});
 
 /* ---------- de factuur zelf, ook als pdf (via afdrukken → opslaan als pdf) ---------- */
@@ -131,7 +132,7 @@ export function MijnFacturen({ naam, data, leden, pl }: { naam: string; data: Re
 /* ---------- Bart: inkomende facturen en wat elk project oplevert ---------- */
 export function FacturenKantoor({ data, leden, projecten }: { data: Record<string, Week>; leden: Bedrijf[]; projecten: string[] }) {
   const [betaald, zetBetaald] = useBetaald();
-  const [klant, zetKlant] = useBewaard<Record<string, number>>("bm-gefactureerd", {});
+  const [klant, zetKlant] = useProjectPrijs();
   const [deel, setDeel] = useState<"in" | "project">("in");
   const [open, setOpen] = useState<Factuur | null>(null);
   const alle = maakFacturen(data, leden);
@@ -186,7 +187,7 @@ export function FacturenKantoor({ data, leden, projecten }: { data: Record<strin
       ) : (
         <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="border-b border-slate-200 text-left text-xs text-slate-500"><th className="p-3">Project</th><th className="p-3 text-right">Uren</th><th className="p-3 text-right">Kosten ZZP&apos;ers</th><th className="p-3 text-right">Gefactureerd aan klant</th><th className="p-3 text-right">Over</th></tr></thead>
+            <thead><tr className="border-b border-slate-200 text-left text-xs text-slate-500"><th className="p-3">Project</th><th className="p-3 text-right">Uren</th><th className="p-3 text-right">Kosten ZZP&apos;ers</th><th className="p-3 text-right">Prijs project</th><th className="p-3 text-right">Over</th></tr></thead>
             <tbody>
               {perProject.map(({ p, uren, kosten }) => {
                 const g = klant[p] ?? 0;
@@ -205,7 +206,7 @@ export function FacturenKantoor({ data, leden, projecten }: { data: Record<strin
               })}
             </tbody>
           </table>
-          <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Kosten = goedgekeurde uren × uurtarief van de monteur. Vul bij &quot;Gefactureerd&quot; in wat je de opdrachtgever rekent.</p>
+          <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Kosten = goedgekeurde uren × uurtarief van de monteur. De prijs is wat de opdrachtgever betaalt; die stel je in bij Projecten.</p>
         </div>
       )}
       {open && <FactuurVenster f={open} sluit={() => setOpen(null)} />}

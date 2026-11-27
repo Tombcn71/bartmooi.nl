@@ -408,7 +408,7 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
 /* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
 function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
-  const [open, setOpen] = useState<null | { monteur: string; dag: number }>(null);
+  const [open, setOpen] = useState<null | { klant: string; dag: number }>(null);
   const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
   const vandaag = (new Date().getDay() + 6) % 7;
   const ditIsDezeWeek = maandagVan(new Date()).getTime() === maandag.getTime();
@@ -438,23 +438,29 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
       })()}
 
       <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <table className="w-full min-w-[720px] table-fixed text-sm">
+        <table className="w-full min-w-[760px] table-fixed text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-              <th className="w-28 p-3">Monteur</th>
+              <th className="w-44 p-3">Project</th>
               {dagen.map((d, i) => { const dt = new Date(maandag); dt.setDate(dt.getDate() + i); return <th key={d} className={`p-3 ${ditIsDezeWeek && i === vandaag ? "text-[#1E5079]" : ""}`}>{d} {dt.getDate()}</th>; })}
             </tr>
           </thead>
           <tbody>
-            {MONTEURS.map((m) => (
-              <tr key={m} className="border-b border-slate-100 last:border-0">
-                <td className="p-3 font-semibold">{m}</td>
+            {KLANTEN.map((klant) => (
+              <tr key={klant} className="border-b border-slate-100 last:border-0">
+                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span></td>
                 {dagen.map((_, d) => {
-                  const p = plan[planSleutel(m, maandag, d)];
+                  const wie = MONTEURS.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
+                  const opdracht = wie.map((m) => plan[planSleutel(m, maandag, d)]?.instructie).find(Boolean);
                   return (
-                    <td key={d} className="p-1.5 align-top">
-                      <button onClick={() => setOpen({ monteur: m, dag: d })} className={`h-full min-h-16 w-full rounded-lg p-2 text-left text-xs ${p ? "bg-blue-50 hover:bg-blue-100" : "border border-dashed border-slate-200 text-slate-400 hover:bg-slate-50"}`}>
-                        {p ? <><span className="block font-semibold text-slate-900">{kort(p.klant)}</span>{p.instructie && <span className="mt-0.5 line-clamp-2 block text-slate-600">{p.instructie}</span>}</> : "+"}
+                    <td key={d} className="p-1 align-top">
+                      <button onClick={() => setOpen({ klant, dag: d })} className={`min-h-14 w-full rounded-lg p-1.5 text-left text-xs ${wie.length ? "bg-blue-50 hover:bg-blue-100" : "text-slate-300 hover:bg-slate-50"}`}>
+                        {wie.length ? (
+                          <>
+                            <span className="flex flex-wrap gap-1">{wie.map((m) => <span key={m} className="rounded-full bg-[#1E5079] px-2 py-0.5 text-[11px] font-semibold text-white">{m}</span>)}</span>
+                            {opdracht && <span className="mt-1 line-clamp-2 block text-slate-600">{opdracht}</span>}
+                          </>
+                        ) : "+"}
                       </button>
                     </td>
                   );
@@ -464,44 +470,54 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-slate-500">Tik op een vak om een klant en een opdracht te plannen. De monteur ziet het meteen op zijn telefoon.</p>
+      <p className="text-xs text-slate-500">Tik op een vak om monteurs en een opdracht in te plannen. De monteur ziet het meteen op zijn telefoon.</p>
 
-      {open && <PlanVenster monteur={open.monteur} dag={open.dag} maandag={maandag} plan={plan} zetPlan={zetPlan} sluit={() => setOpen(null)} />}
+      {open && <PlanVenster klant={open.klant} dag={open.dag} maandag={maandag} plan={plan} zetPlan={zetPlan} sluit={() => setOpen(null)} />}
     </main>
   );
 }
 
-function PlanVenster({ monteur, dag, maandag, plan, zetPlan, sluit }: { monteur: string; dag: number; maandag: Date; sluit: () => void } & ReturnType<typeof usePlanning>) {
-  const k = planSleutel(monteur, maandag, dag);
-  const [klant, setKlant] = useState(plan[k]?.klant ?? KLANTEN[0]);
-  const [instructie, setInstructie] = useState(plan[k]?.instructie ?? "");
-  const [helewWeek, setHeleWeek] = useState(false);
-  const dagNaam = T.nl.dagen[dag];
+function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: string; dag: number; maandag: Date; sluit: () => void } & ReturnType<typeof usePlanning>) {
+  const nu = MONTEURS.filter((m) => plan[planSleutel(m, maandag, dag)]?.klant === klant);
+  const [wie, setWie] = useState<string[]>(nu);
+  const [instructie, setInstructie] = useState(nu.map((m) => plan[planSleutel(m, maandag, dag)]?.instructie).find(Boolean) ?? "");
+  const [heleWeek, setHeleWeek] = useState(false);
   const opslaan = () => {
-    const dagenLijst = helewWeek ? [0, 1, 2, 3, 4] : [dag];
-    dagenLijst.forEach((d) => zetPlan(planSleutel(monteur, maandag, d), { klant, instructie }));
+    for (const d of heleWeek ? [0, 1, 2, 3, 4] : [dag])
+      for (const m of MONTEURS) {
+        const k = planSleutel(m, maandag, d);
+        if (wie.includes(m)) zetPlan(k, { klant, instructie });
+        else if (plan[k]?.klant === klant) zetPlan(k, null);
+      }
     sluit();
   };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center" onClick={sluit}>
       <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">{monteur} · {dagNaam}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <div><h3 className="text-lg font-bold leading-tight">{klant.split(", ").slice(1).join(", ")}</h3><p className="text-sm text-slate-500">{T.nl.dagen[dag]}</p></div>
           <button onClick={sluit} aria-label="Sluiten" className="p-1 text-slate-500"><X className="size-5" /></button>
         </div>
-        <label className="block text-sm font-semibold">Klant / adres
-          <select value={klant} onChange={(e) => setKlant(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-base font-normal">
-            {KLANTEN.map((kl) => <option key={kl}>{kl}</option>)}
-          </select>
-        </label>
-        <label className="block text-sm font-semibold">Opdracht voor de monteur
+        <div className="text-sm font-semibold">Wie gaat erheen?
+          <div className="mt-1 flex flex-wrap gap-2">
+            {MONTEURS.map((m) => {
+              const aan = wie.includes(m);
+              const elders = plan[planSleutel(m, maandag, dag)];
+              const bezet = !aan && elders && elders.klant !== klant;
+              return (
+                <button key={m} type="button" onClick={() => setWie(aan ? wie.filter((x) => x !== m) : [...wie, m])} className={`rounded-full px-4 py-2 text-sm font-semibold ${aan ? "bg-[#1E5079] text-white" : bezet ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-700"}`} title={bezet ? `Staat al bij ${elders.klant}` : undefined}>
+                  {m}{bezet ? " •" : ""}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs font-normal text-slate-500">Oranje = staat die dag al ergens anders; aantikken verplaatst hem hierheen.</p>
+        </div>
+        <label className="block text-sm font-semibold">Opdracht
           <textarea value={instructie} onChange={(e) => setInstructie(e.target.value)} rows={3} placeholder="Bijv. 3 kozijnen plaatsen achterkant, sleutel bij de buren." className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-base font-normal" />
         </label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={helewWeek} onChange={(e) => setHeleWeek(e.target.checked)} className="size-4" /> Hele week (ma t/m vr) hetzelfde</label>
-        <div className="flex gap-2 pt-1">
-          {plan[k] && <button onClick={() => { zetPlan(k, null); sluit(); }} className="rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700">Weghalen</button>}
-          <button onClick={opslaan} className="flex-1 rounded-xl bg-[#1E5079] py-3 font-bold text-white">Opslaan</button>
-        </div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={heleWeek} onChange={(e) => setHeleWeek(e.target.checked)} className="size-4" /> Hele week (ma t/m vr) hetzelfde</label>
+        <button onClick={opslaan} className="w-full rounded-xl bg-[#1E5079] py-3 font-bold text-white">Opslaan</button>
       </div>
     </div>
   );

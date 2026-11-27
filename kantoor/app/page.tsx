@@ -6,7 +6,7 @@ import { Check, ChevronLeft, ChevronRight, HardHat, Plus, Send, UserCog } from "
 /*
  * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
  * - Monteur: per dag bij welke klant en hoeveel uur, en aan het eind "week insturen". Geen inklokken.
- * - Bart: per week per monteur de uren, goedkeuren en downloaden.
+ * - Bart: per week per monteur de uren en goedkeuren. Geen Excel nodig.
  * Alles is voorbeelddata en wordt alleen in deze browser bewaard.
  */
 

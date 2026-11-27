@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
-import { Check, ChevronLeft, ChevronRight, HardHat, Plus, Send, UserCog } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, HardHat, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
 /*
  * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
@@ -20,12 +20,12 @@ const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, 
 const T = {
   nl: {
     wie: "Wie ben jij?", monteur: "Monteur", bart: "Bart (kantoor)", week: "Week", dagen: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
-    toevoegen: "Klant toevoegen", klant: "Klant", uur: "uur", min: "min", notitie: "Wat heb je gedaan? (mag leeg)", totaal: "Totaal deze week", insturen: "Week insturen",
+    toevoegen: "Andere klant toevoegen", urenInvullen: "Uren invullen", vanBart: "Opdracht van Bart", route: "Route", nietGepland: "Niet ingepland", klant: "Klant", uur: "uur", min: "min", notitie: "Wat heb je gedaan?", totaal: "Totaal deze week", insturen: "Week insturen",
     ingestuurd: "Ingestuurd. Bart ziet je uren nu.", goedgekeurd: "Goedgekeurd door Bart", wissel: "Andere persoon", geen: "Nog niets ingevuld",
   },
   pl: {
     wie: "Kim jesteś?", monteur: "Monter", bart: "Bart (biuro)", week: "Tydzień", dagen: ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"],
-    toevoegen: "Dodaj klienta", klant: "Klient", uur: "godz.", min: "min", notitie: "Co zrobiłeś? (opcjonalnie)", totaal: "Razem w tym tygodniu", insturen: "Wyślij tydzień",
+    toevoegen: "Dodaj innego klienta", urenInvullen: "Wpisz godziny", vanBart: "Zadanie od Barta", route: "Trasa", nietGepland: "Brak planu", klant: "Klient", uur: "godz.", min: "min", notitie: "Co zrobiłeś?", totaal: "Razem w tym tygodniu", insturen: "Wyślij tydzień",
     ingestuurd: "Wysłano. Bart widzi teraz twoje godziny.", goedgekeurd: "Zatwierdzone przez Barta", wissel: "Inna osoba", geen: "Nic jeszcze nie wpisano",
   },
 };
@@ -72,10 +72,39 @@ function useOpslag() {
   return { data, bewaar };
 }
 
+/* ---------- planning: per monteur per dag waar hij heen gaat en wat hij moet doen ---------- */
+type Plan = { klant: string; instructie: string };
+const planSleutel = (monteur: string, maandag: Date, dag: number) => `${sleutel(monteur, maandag)}|${dag}`;
+function usePlanning() {
+  const [plan, setPlan] = useState<Record<string, Plan>>({});
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("bm-planning");
+      if (s) return setPlan(JSON.parse(s));
+      const m = maandagVan(new Date());
+      const v: Record<string, Plan> = {};
+      [0, 1, 2, 3, 4].forEach((d) => {
+        v[planSleutel("Piotr", m, d)] = { klant: KLANTEN[0], instructie: d === 0 ? "Oude kozijnen eruit, puin in de container voor de deur." : "Nieuwe kozijnen plaatsen en afkitten." };
+        v[planSleutel("Marek", m, d)] = { klant: KLANTEN[0], instructie: "Samen met Piotr." };
+        v[planSleutel("Tomasz", m, d)] = { klant: d < 2 ? KLANTEN[1] : KLANTEN[2], instructie: d < 2 ? "Rolluiken ophangen, sleutel bij de buren (nr. 33)." : "Inmeten 6 ramen, foto's maken." };
+      });
+      setPlan(v);
+    } catch {}
+  }, []);
+  const zetPlan = (k: string, p: Plan | null) =>
+    setPlan((o) => {
+      const n = { ...o };
+      if (p) n[k] = p; else delete n[k];
+      try { localStorage.setItem("bm-planning", JSON.stringify(n)); } catch {}
+      return n;
+    });
+  return { plan, zetPlan };
+}
+
 export default function Start() {
   const [rol, setRol] = useState<null | { soort: "monteur"; naam: string } | { soort: "bart" }>(null);
   const [taal, setTaal] = useState<Taal>("nl");
-  const opslag = useOpslag();
+  const opslag = { ...useOpslag(), ...usePlanning() };
   const t = T[taal];
 
   if (!rol) return <Inloggen taal={taal} setTaal={setTaal} kies={setRol} />;
@@ -144,7 +173,7 @@ function Tabs<T extends string>({ tabs, actief, zet }: { tabs: [T, string][]; ac
   );
 }
 
-function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag>) {
+function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
   const [tab, setTab] = useState<"uren" | "overzicht" | "cert">("uren");
   const pl = p.taal === "pl";
   const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
@@ -158,12 +187,12 @@ function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => vo
   );
 }
 
-function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag>) {
-  const [tab, setTab] = useState<"uren" | "cert">("uren");
+function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const [tab, setTab] = useState<"plan" | "uren" | "cert">("plan");
   return (
     <div>
-      <div className="mx-auto max-w-5xl px-4 pt-4 md:px-8"><Tabs tabs={[["uren", "Uren"], ["cert", "Certificaten"]]} actief={tab} zet={setTab} /></div>
-      {tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={MONTEURS} /></main>}
+      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"]]} actief={tab} zet={setTab} /></div>
+      {tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={MONTEURS} /></main>}
     </div>
   );
 }
@@ -236,7 +265,7 @@ function WeekKiezer({ maandag, setMaandag, label, taal }: { maandag: Date; setMa
 }
 
 /* ---------- monteur: één scherm, de week ---------- */
-function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag>) {
+function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
   const t = T[taal];
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const k = sleutel(naam, maandag);
@@ -257,12 +286,21 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; t
       {t.dagen.map((dagNaam, dag) => {
         const datum = new Date(maandag); datum.setDate(datum.getDate() + dag);
         const regels = week.regels.map((r, i) => ({ r, i })).filter(({ r }) => r.dag === dag);
+        const gepland = plan[planSleutel(naam, maandag, dag)];
         return (
           <section key={dag} className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="mb-2 flex items-baseline justify-between">
               <h2 className="font-bold">{dagNaam}</h2>
               <span className="text-sm text-slate-500">{datumKort(datum, taal)}</span>
             </div>
+            {gepland && (
+              <div className="mb-3 rounded-xl bg-blue-50 p-3">
+                <p className="flex items-start gap-2 font-semibold text-[#1E5079]"><MapPin className="mt-0.5 size-4 shrink-0" /> {gepland.klant}</p>
+                {gepland.instructie && <p className="mt-1 text-sm text-slate-700"><span className="font-semibold">{t.vanBart}:</span> {gepland.instructie}</p>}
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(gepland.klant.split(", ").slice(1).join(", ") + " Den Haag")}`} target="_blank" rel="noopener" className="mt-2 inline-block text-sm font-semibold text-[#1E5079] underline">{t.route}</a>
+              </div>
+            )}
+            {!gepland && regels.length === 0 && <p className="mb-2 text-sm text-slate-400">{t.nietGepland}</p>}
             {regels.map(({ r, i }) => (
               <div key={i} className="mb-3 space-y-2 border-b border-slate-100 pb-3 last:border-0">
                 <select disabled={vast} value={r.klant} onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, klant: e.target.value } : x)))} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-base">
@@ -289,8 +327,8 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; t
               </div>
             ))}
             {!vast && (
-              <button onClick={() => zet([...week.regels, { dag, klant: regels.at(-1)?.r.klant ?? KLANTEN[0], uren: 8, notitie: "" }])} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-3 text-sm font-semibold text-slate-600">
-                <Plus className="size-4" /> {t.toevoegen}
+              <button onClick={() => zet([...week.regels, { dag, klant: regels.at(-1)?.r.klant ?? gepland?.klant ?? KLANTEN[0], uren: 8, notitie: "" }])} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-3 text-sm font-semibold text-slate-600">
+                <Plus className="size-4" /> {gepland && regels.length === 0 ? t.urenInvullen : t.toevoegen}
               </button>
             )}
           </section>
@@ -316,7 +354,7 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; t
 }
 
 /* ---------- Bart: de week van alle monteurs ---------- */
-function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof useOpslag>) {
+function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const dagen = T.nl.dagen.map((d) => d.slice(0, 2));
   const rijen = useMemo(() => MONTEURS.map((m) => ({ m, k: sleutel(m, maandag), w: data[sleutel(m, maandag)] })), [data, maandag]);
@@ -364,5 +402,104 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
       </div>
       <p className="text-xs text-slate-500">Tik op een monteur voor de details per dag.</p>
     </main>
+  );
+}
+
+/* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
+function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
+  const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
+  const [open, setOpen] = useState<null | { monteur: string; dag: number }>(null);
+  const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
+  const vandaag = (new Date().getDay() + 6) % 7;
+  const ditIsDezeWeek = maandagVan(new Date()).getTime() === maandag.getTime();
+  const kort = (k: string) => k.split(", ").slice(1).join(", ") || k;
+  return (
+    <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-8">
+      <h1 className="text-2xl font-bold">Planning</h1>
+      <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>
+
+      {ditIsDezeWeek && vandaag < 6 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="mb-2 font-bold">Vandaag aan het werk</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {MONTEURS.map((m) => {
+              const p = plan[planSleutel(m, maandag, vandaag)];
+              return (
+                <li key={m} className={`rounded-xl p-3 text-sm ${p ? "bg-blue-50" : "bg-slate-50 text-slate-400"}`}>
+                  <span className="font-bold text-slate-900">{m}</span><br />{p ? kort(p.klant) : "Niet ingepland"}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+        <table className="w-full min-w-[720px] table-fixed text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+              <th className="w-28 p-3">Monteur</th>
+              {dagen.map((d, i) => { const dt = new Date(maandag); dt.setDate(dt.getDate() + i); return <th key={d} className={`p-3 ${ditIsDezeWeek && i === vandaag ? "text-[#1E5079]" : ""}`}>{d} {dt.getDate()}</th>; })}
+            </tr>
+          </thead>
+          <tbody>
+            {MONTEURS.map((m) => (
+              <tr key={m} className="border-b border-slate-100 last:border-0">
+                <td className="p-3 font-semibold">{m}</td>
+                {dagen.map((_, d) => {
+                  const p = plan[planSleutel(m, maandag, d)];
+                  return (
+                    <td key={d} className="p-1.5 align-top">
+                      <button onClick={() => setOpen({ monteur: m, dag: d })} className={`h-full min-h-16 w-full rounded-lg p-2 text-left text-xs ${p ? "bg-blue-50 hover:bg-blue-100" : "border border-dashed border-slate-200 text-slate-400 hover:bg-slate-50"}`}>
+                        {p ? <><span className="block font-semibold text-slate-900">{kort(p.klant)}</span>{p.instructie && <span className="mt-0.5 line-clamp-2 block text-slate-600">{p.instructie}</span>}</> : "+"}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-500">Tik op een vak om een klant en een opdracht te plannen. De monteur ziet het meteen op zijn telefoon.</p>
+
+      {open && <PlanVenster monteur={open.monteur} dag={open.dag} maandag={maandag} plan={plan} zetPlan={zetPlan} sluit={() => setOpen(null)} />}
+    </main>
+  );
+}
+
+function PlanVenster({ monteur, dag, maandag, plan, zetPlan, sluit }: { monteur: string; dag: number; maandag: Date; sluit: () => void } & ReturnType<typeof usePlanning>) {
+  const k = planSleutel(monteur, maandag, dag);
+  const [klant, setKlant] = useState(plan[k]?.klant ?? KLANTEN[0]);
+  const [instructie, setInstructie] = useState(plan[k]?.instructie ?? "");
+  const [helewWeek, setHeleWeek] = useState(false);
+  const dagNaam = T.nl.dagen[dag];
+  const opslaan = () => {
+    const dagenLijst = helewWeek ? [0, 1, 2, 3, 4] : [dag];
+    dagenLijst.forEach((d) => zetPlan(planSleutel(monteur, maandag, d), { klant, instructie }));
+    sluit();
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center" onClick={sluit}>
+      <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{monteur} · {dagNaam}</h3>
+          <button onClick={sluit} aria-label="Sluiten" className="p-1 text-slate-500"><X className="size-5" /></button>
+        </div>
+        <label className="block text-sm font-semibold">Klant / adres
+          <select value={klant} onChange={(e) => setKlant(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-base font-normal">
+            {KLANTEN.map((kl) => <option key={kl}>{kl}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-semibold">Opdracht voor de monteur
+          <textarea value={instructie} onChange={(e) => setInstructie(e.target.value)} rows={3} placeholder="Bijv. 3 kozijnen plaatsen achterkant, sleutel bij de buren." className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-base font-normal" />
+        </label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={helewWeek} onChange={(e) => setHeleWeek(e.target.checked)} className="size-4" /> Hele week (ma t/m vr) hetzelfde</label>
+        <div className="flex gap-2 pt-1">
+          {plan[k] && <button onClick={() => { zetPlan(k, null); sluit(); }} className="rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700">Weghalen</button>}
+          <button onClick={opslaan} className="flex-1 rounded-xl bg-[#1E5079] py-3 font-bold text-white">Opslaan</button>
+        </div>
+      </div>
+    </div>
   );
 }

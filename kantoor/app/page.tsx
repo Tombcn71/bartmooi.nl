@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Download, HardHat, Minus, Plus, Send, UserCog } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Download, HardHat, Plus, Send, UserCog } from "lucide-react";
 
 /*
  * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
@@ -19,12 +19,12 @@ const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, 
 const T = {
   nl: {
     wie: "Wie ben jij?", monteur: "Monteur", bart: "Bart (kantoor)", week: "Week", dagen: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
-    toevoegen: "Klant toevoegen", klant: "Klant", uur: "uur", notitie: "Wat heb je gedaan? (mag leeg)", totaal: "Totaal deze week", insturen: "Week insturen",
+    toevoegen: "Klant toevoegen", klant: "Klant", uur: "uur", min: "min", notitie: "Wat heb je gedaan? (mag leeg)", totaal: "Totaal deze week", insturen: "Week insturen",
     ingestuurd: "Ingestuurd. Bart ziet je uren nu.", goedgekeurd: "Goedgekeurd door Bart", wissel: "Andere persoon", geen: "Nog niets ingevuld",
   },
   pl: {
     wie: "Kim jesteś?", monteur: "Monter", bart: "Bart (biuro)", week: "Tydzień", dagen: ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"],
-    toevoegen: "Dodaj klienta", klant: "Klient", uur: "godz.", notitie: "Co zrobiłeś? (opcjonalnie)", totaal: "Razem w tym tygodniu", insturen: "Wyślij tydzień",
+    toevoegen: "Dodaj klienta", klant: "Klient", uur: "godz.", min: "min", notitie: "Co zrobiłeś? (opcjonalnie)", totaal: "Razem w tym tygodniu", insturen: "Wyślij tydzień",
     ingestuurd: "Wysłano. Bart widzi teraz twoje godziny.", goedgekeurd: "Zatwierdzone przez Barta", wissel: "Inna osoba", geen: "Nic jeszcze nie wpisano",
   },
 };
@@ -40,6 +40,8 @@ function weeknummer(maandag: Date) {
   const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
   return 1 + Math.round((d.getTime() - jan4.getTime()) / 86400000 / 7 - ((jan4.getUTCDay() + 6) % 7 - 3) / 7);
 }
+/** 7,5 → "7:30" */
+const uurTekst = (u: number) => `${Math.floor(u)}:${String(Math.round((u % 1) * 60)).padStart(2, "0")}`;
 const sleutel = (monteur: string, maandag: Date) => `${monteur}|${maandag.toISOString().slice(0, 10)}`;
 const datumKort = (d: Date, taal: Taal) => d.toLocaleDateString(taal === "pl" ? "pl-PL" : "nl-NL", { day: "numeric", month: "short" });
 
@@ -186,9 +188,20 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; t
                   {KLANTEN.map((kl) => <option key={kl}>{kl}</option>)}
                 </select>
                 <div className="flex items-center gap-2">
-                  <button disabled={vast} onClick={() => zet(week.regels.map((x, j) => (j === i ? { ...x, uren: Math.max(0, x.uren - 0.5) } : x)))} className="grid size-11 place-items-center rounded-xl border border-slate-300"><Minus className="size-5" /></button>
-                  <span className="w-20 text-center text-xl font-bold">{r.uren} <span className="text-sm font-normal">{t.uur}</span></span>
-                  <button disabled={vast} onClick={() => zet(week.regels.map((x, j) => (j === i ? { ...x, uren: Math.min(14, x.uren + 0.5) } : x)))} className="grid size-11 place-items-center rounded-xl border border-slate-300"><Plus className="size-5" /></button>
+                  <label className="flex items-center gap-2">
+                    <input disabled={vast} inputMode="numeric" value={Math.floor(r.uren) || ""} placeholder="0"
+                      onChange={(e) => { const h = Math.min(16, Math.max(0, parseInt(e.target.value.replace(/\D/g, "") || "0", 10))); zet(week.regels.map((x, j) => (j === i ? { ...x, uren: h + (x.uren % 1) } : x))); }}
+                      className="w-16 rounded-xl border border-slate-300 p-3 text-center text-xl font-bold" />
+                    <span className="text-sm text-slate-600">{t.uur}</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <select disabled={vast} value={Math.round((r.uren % 1) * 60)}
+                      onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, uren: Math.floor(x.uren) + Number(e.target.value) / 60 } : x)))}
+                      className="rounded-xl border border-slate-300 bg-white p-3 text-xl font-bold">
+                      {[0, 15, 30, 45].map((m) => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
+                    </select>
+                    <span className="text-sm text-slate-600">{t.min}</span>
+                  </label>
                   {!vast && <button onClick={() => zet(week.regels.filter((_, j) => j !== i))} className="ml-auto text-sm text-red-600">✕</button>}
                 </div>
                 <input disabled={vast} value={r.notitie} onChange={(e) => zet(week.regels.map((x, j) => (j === i ? { ...x, notitie: e.target.value } : x)))} placeholder={t.notitie} className="w-full rounded-xl border border-slate-200 p-3 text-base" />
@@ -205,7 +218,7 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar }: { naam: string; t
 
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
         <div className="mx-auto flex max-w-md items-center gap-3">
-          <div><div className="text-xs text-slate-500">{t.totaal}</div><div className="text-xl font-bold">{totaal} {t.uur}</div></div>
+          <div><div className="text-xs text-slate-500">{t.totaal}</div><div className="text-xl font-bold">{uurTekst(totaal)}</div></div>
           {week.goedgekeurd ? (
             <span className="ml-auto flex items-center gap-1 font-semibold text-green-700"><Check className="size-5" /> {t.goedgekeurd}</span>
           ) : week.ingestuurd ? (
@@ -258,8 +271,8 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
             <details key={m} className="border-b border-slate-100 last:border-0">
               <summary className="grid cursor-pointer list-none grid-cols-[1fr_repeat(7,2.2rem)_3.5rem] items-center gap-1 px-3 py-3 text-sm hover:bg-slate-50 md:grid-cols-[1fr_repeat(7,3rem)_4rem_9rem] [&::-webkit-details-marker]:hidden">
                 <span className="truncate font-semibold">{m} <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold md:hidden ${status[1]}`}>{status[0]}</span></span>
-                {perDag.map((u, i) => <span key={i} className="text-center tabular-nums text-slate-700">{u || "–"}</span>)}
-                <span className="text-right font-bold tabular-nums">{totaal}</span>
+                {perDag.map((u, i) => <span key={i} className="text-center tabular-nums text-slate-700">{u ? uurTekst(u) : "–"}</span>)}
+                <span className="text-right font-bold tabular-nums">{uurTekst(totaal)}</span>
                 <span className="hidden justify-end md:flex">
                   {w?.ingestuurd && !w.goedgekeurd
                     ? <button onClick={(e) => { e.preventDefault(); bewaar(k, { ...w, goedgekeurd: true }); }} className="flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1 text-xs font-bold text-white"><Check className="size-3.5" /> Goedkeuren</button>
@@ -268,7 +281,7 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
               </summary>
               <div className="space-y-1 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 {(w?.regels.length ?? 0) === 0 ? <p className="text-slate-500">Nog niets ingevuld.</p> : w!.regels.slice().sort((a, b) => a.dag - b.dag).map((r, i) => (
-                  <p key={i}><span className="font-semibold">{T.nl.dagen[r.dag]}</span> · {r.klant} · {r.uren} uur{r.notitie ? ` · ${r.notitie}` : ""}</p>
+                  <p key={i}><span className="font-semibold">{T.nl.dagen[r.dag]}</span> · {r.klant} · {uurTekst(r.uren)}{r.notitie ? ` · ${r.notitie}` : ""}</p>
                 ))}
                 {w?.ingestuurd && !w.goedgekeurd && <button onClick={() => bewaar(k, { ...w, goedgekeurd: true })} className="mt-2 flex items-center gap-1 rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white md:hidden"><Check className="size-4" /> Goedkeuren</button>}
               </div>

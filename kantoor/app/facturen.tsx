@@ -52,7 +52,9 @@ function useBewaard<T>(sleutel: string, begin: T) {
   const zet = (n: T) => { setV(n); try { localStorage.setItem(sleutel, JSON.stringify(n)); } catch {} };
   return [v, zet] as const;
 }
-export const useProjectPrijs = () => useBewaard<Record<string, number>>("bm-gefactureerd", {});
+// Voorbeeldprijzen voor de demo (zelfde namen als de demoprojecten).
+const DEMO_PRIJS: Record<string, number> = { "Familie de Vries, Laan van Meerdervoort 12": 5500, "Familie Jansen, Zeestraat 31": 6000, "Van Dijk Bouw, Hoefkade 140": 9000 };
+export const useProjectPrijs = () => useBewaard<Record<string, number>>("bm-gefactureerd", DEMO_PRIJS);
 export const useBetaald = () => useBewaard<Record<string, boolean>>("bm-betaald", {});
 
 /* ---------- de factuur zelf, ook als pdf (via afdrukken → opslaan als pdf) ---------- */

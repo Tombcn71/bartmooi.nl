@@ -298,7 +298,7 @@ function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag>
   return (
     <div>
       <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["facturen", "Facturen"], ["cert", "Certificaten"], ["projecten", "Projecten"], ["team", "Team"]]} actief={tab} zet={setTab} /></div>
-      {tab === "facturen" ? <FacturenKantoor data={p.data} leden={leden} projecten={projecten} /> : tab === "team" ? <TeamBeheer /> : tab === "projecten" ? <ProjectBeheer /> : tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={team} /></main>}
+      {tab === "facturen" ? <FacturenKantoor data={p.data} leden={leden} projecten={projecten} /> : tab === "team" ? <TeamBeheer /> : tab === "projecten" ? <ProjectBeheer /> : tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} data={p.data} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={team} /></main>}
     </div>
   );
 }
@@ -515,9 +515,55 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
 }
 
 /* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
-function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
-  const { team } = useTeam();
-  const { projecten, info, periode } = useProjecten();
+/* ---------- stoplicht per project: loopt het nog binnen prijs en einddatum? ---------- */
+type Signaal = { kleur: "groen" | "oranje" | "rood" | "geen"; reden: string };
+function datumUitSleutel(iso: string, dag = 0) {
+  const d = new Date(iso + "T12:00");
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() + dag);
+  return d;
+}
+function projectSignaal(p: string, prijs: number | undefined, eind: string | undefined, data: Record<string, Week>, plan: Record<string, Plan>, leden: Lid[]): Signaal {
+  const tarief = (naam: string) => leden.find((l) => l.naam === naam)?.tarief ?? STANDAARD_TARIEF;
+  const vandaag = isoDag(new Date());
+  let uitgegeven = 0;
+  const geschreven = new Set<string>();
+  for (const [k, w] of Object.entries(data)) {
+    const [naam, iso] = k.split("|");
+    for (const r of w.regels) if (r.klant === p) { uitgegeven += r.uren * tarief(naam); geschreven.add(`${naam}|${isoDag(datumUitSleutel(iso, r.dag))}`); }
+  }
+  let verwacht = 0, dagenNog = 0, laatste = "";
+  for (const [k, pl] of Object.entries(plan)) {
+    if (pl.klant !== p) continue;
+    const [naam, iso, dag] = k.split("|");
+    const d = isoDag(datumUitSleutel(iso, Number(dag)));
+    if (d > laatste) laatste = d;
+    if (d >= vandaag && !geschreven.has(`${naam}|${d}`)) { verwacht += 8 * tarief(naam); dagenNog++; }
+  }
+  const redenen: string[] = [];
+  let kleur: Signaal["kleur"] = "groen";
+  const erger = (k: "oranje" | "rood") => { if (k === "rood" || kleur !== "rood") kleur = k; };
+  if (eind && laatste > eind) {
+    const over = Math.round((new Date(laatste + "T12:00").getTime() - new Date(eind + "T12:00").getTime()) / 86400000);
+    redenen.push(`${over} ${over === 1 ? "dag" : "dagen"} over einddatum`); erger("rood");
+  } else if (eind && eind < vandaag && dagenNog > 0) { redenen.push("einddatum voorbij"); erger("rood"); }
+  if (prijs) {
+    const nu = uitgegeven / prijs, straks = (uitgegeven + verwacht) / prijs;
+    if (straks > 1) { redenen.push(`kosten straks ${Math.round(straks * 100)}% van de prijs`); erger("rood"); }
+    else if (nu >= 0.7 || straks >= 0.9) { redenen.push(`budget ${Math.round(nu * 100)}% op${dagenNog ? `, nog ${dagenNog} ${dagenNog === 1 ? "dag" : "dagen"} ingepland` : ""}`); erger("oranje"); }
+    else redenen.push(`budget ${Math.round(nu * 100)}% op`);
+  } else if (!eind) return { kleur: "geen", reden: "geen prijs of einddatum" };
+  return { kleur, reden: redenen.join(", ") || "op schema" };
+}
+
+function Planbord({ plan, zetPlan, data }: ReturnType<typeof usePlanning> & { data: Record<string, Week> }) {
+  const { team, leden } = useTeam();
+  const { projecten: alleProjecten, info, periode } = useProjecten();
+  const [prijs] = useProjectPrijs();
+  const signaal = Object.fromEntries(alleProjecten.map((p) => [p, projectSignaal(p, prijs[p], periode[p]?.eind, data, plan, leden)]));
+  const aandacht = alleProjecten.filter((p) => signaal[p].kleur === "oranje" || signaal[p].kleur === "rood");
+  const [alleenAandacht, setAlleenAandacht] = useState(false);
+  const projecten = alleenAandacht ? aandacht : alleProjecten;
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const [open, setOpen] = useState<null | { klant: string; dag: number }>(null);
   const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
@@ -537,13 +583,17 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
         const vrij = team.length - vandaagPlan.length;
         const label = ditIsDezeWeek && vandaag < 6 ? "vandaag" : "op maandag";
         return (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[[vandaagPlan.length, `monteurs aan het werk ${label}`], [klussen, `lopende klussen ${label}`], [vrij, "niet ingepland"]].map(([n, t]) => (
               <div key={String(t)} className="rounded-2xl bg-white p-3 shadow-sm">
                 <p className="text-2xl font-bold text-[#1E5079]">{n}</p>
                 <p className="text-xs leading-tight text-slate-600">{t}</p>
               </div>
             ))}
+            <button onClick={() => setAlleenAandacht(!alleenAandacht)} className={`rounded-2xl p-3 text-left shadow-sm ${alleenAandacht ? "bg-[#1E5079] text-white" : "bg-white"}`}>
+              <p className={`text-2xl font-bold ${alleenAandacht ? "" : aandacht.length ? "text-red-600" : "text-green-700"}`}>{aandacht.length}</p>
+              <p className={`text-xs leading-tight ${alleenAandacht ? "text-white/80" : "text-slate-600"}`}>{alleenAandacht ? "toon weer alle projecten" : "projecten die aandacht nodig hebben"}</p>
+            </button>
           </div>
         );
       })()}
@@ -559,7 +609,7 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
           <tbody>
             {projecten.map((klant) => (
               <tr key={klant} className="border-b border-slate-100 last:border-0">
-                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{periodeTekst(periode[klant]) && <span className="mt-1 block text-xs font-semibold text-[#1E5079]">{periodeTekst(periode[klant])}</span>}{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
+                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{periodeTekst(periode[klant]) && <span className="mt-1 block text-xs font-semibold text-[#1E5079]">{periodeTekst(periode[klant])}</span>}{signaal[klant] && signaal[klant].kleur !== "geen" && <span className={`mt-1 flex items-start gap-1.5 text-xs font-medium ${{ groen: "text-green-700", oranje: "text-amber-700", rood: "text-red-600" }[signaal[klant].kleur as "groen"]}`}><span className={`mt-1 size-2 shrink-0 rounded-full ${{ groen: "bg-green-500", oranje: "bg-amber-500", rood: "bg-red-500" }[signaal[klant].kleur as "groen"]}`} />{signaal[klant].reden}</span>}{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
                 {dagen.map((_, d) => {
                   const wie = team.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
                   const dagIso = (() => { const x = new Date(maandag); x.setDate(x.getDate() + d); return isoDag(x); })();

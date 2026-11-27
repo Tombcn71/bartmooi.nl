@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
 import { FacturenKantoor, MijnFacturen, STANDAARD_TARIEF, useProjectPrijs } from "./facturen";
-import { Check, ChevronLeft, ChevronRight, HardHat, MapPin, X, Plus, Send, UserCog } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, HardHat, Home, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
 /*
  * Voorbeeld van de werkbonnen-app voor BartMooi: twee schermen.
@@ -202,6 +202,7 @@ export default function Start() {
   return (
     <>
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 pt-3 md:px-8">
+        <button onClick={() => ga("")} aria-label="Home" className="flex items-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-[#1E5079]"><Home className="size-4" /></button>
         <button onClick={() => history.back()} aria-label="Terug" className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-[#1E5079]"><ChevronLeft className="size-4" /> {taal === "pl" ? "Wstecz" : "Terug"}</button>
         <button onClick={() => history.forward()} aria-label="Vooruit" className="flex items-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-[#1E5079]"><ChevronRight className="size-4" /></button>
         <button onClick={() => ga(rol.soort === "bart" ? "monteur" : "kantoor")} className="ml-auto flex items-center gap-1.5 rounded-xl bg-[#1E5079] px-3 py-2 text-sm font-semibold text-white">{rol.soort === "bart" ? <><HardHat className="size-4" /> Bekijk als monteur</> : <><UserCog className="size-4" /> {taal === "pl" ? "Biuro" : "Naar kantoor"}</>}</button>

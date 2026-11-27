@@ -487,7 +487,7 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
                         {wie.length ? (
                           <>
                             {opdracht && <span className="mb-1.5 line-clamp-3 block font-medium text-slate-800">{opdracht}</span>}
-                            <span className="flex flex-wrap gap-1">{wie.map((m) => <span key={m} className="rounded-full bg-[#1E5079] px-2 py-0.5 text-[11px] font-semibold text-white">{m}</span>)}</span>
+                            <span className="flex flex-wrap gap-1">{wie.map((m) => <span key={m} className="rounded-full border border-[#1E5079]/40 px-2 py-0.5 text-[11px] font-semibold text-[#1E5079]">{m}</span>)}</span>
                           </>
                         ) : "+"}
                       </button>

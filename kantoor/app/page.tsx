@@ -418,21 +418,24 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
       <h1 className="text-2xl font-bold">Planning</h1>
       <div className="max-w-sm"><WeekKiezer maandag={maandag} setMaandag={setMaandag} label="Week" taal="nl" /></div>
 
-      {ditIsDezeWeek && vandaag < 6 && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="mb-2 font-bold">Vandaag aan het werk</h2>
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {MONTEURS.map((m) => {
-              const p = plan[planSleutel(m, maandag, vandaag)];
-              return (
-                <li key={m} className={`rounded-xl p-3 text-sm ${p ? "bg-blue-50" : "bg-slate-50 text-slate-400"}`}>
-                  <span className="font-bold text-slate-900">{m}</span><br />{p ? kort(p.klant) : "Niet ingepland"}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+      {(() => {
+        // Korte cijfers voor vandaag (of maandag, als je een andere week bekijkt).
+        const d = ditIsDezeWeek && vandaag < 6 ? vandaag : 0;
+        const vandaagPlan = MONTEURS.map((m) => plan[planSleutel(m, maandag, d)]).filter(Boolean);
+        const klussen = new Set(vandaagPlan.map((p) => p!.klant)).size;
+        const vrij = MONTEURS.length - vandaagPlan.length;
+        const label = ditIsDezeWeek && vandaag < 6 ? "vandaag" : "op maandag";
+        return (
+          <div className="grid grid-cols-3 gap-2">
+            {[[vandaagPlan.length, `monteurs aan het werk ${label}`], [klussen, `lopende klussen ${label}`], [vrij, "niet ingepland"]].map(([n, t]) => (
+              <div key={String(t)} className="rounded-2xl bg-white p-3 shadow-sm">
+                <p className="text-2xl font-bold text-[#1E5079]">{n}</p>
+                <p className="text-xs leading-tight text-slate-600">{t}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
         <table className="w-full min-w-[720px] table-fixed text-sm">

@@ -45,6 +45,16 @@ const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, 
 
 /* ---------- projecten: Bart stelt zelf in waar gewerkt wordt ---------- */
 let projectenNu: string[] = KLANTEN;
+let infoNu: Record<string, string> = {
+  [KLANTEN[0]]: "Kozijnen vervangen: 4 kunststof kozijnen achterkant, oude eruit en afvoeren.",
+  [KLANTEN[1]]: "Rolluiken: 3 elektrische rolluiken aan de voorkant.",
+  [KLANTEN[2]]: "Nieuwbouw: inmeten en plaatsen van 6 aluminium ramen.",
+};
+function zetInfo(i: Record<string, string>) {
+  infoNu = i;
+  try { localStorage.setItem("bm-project-info", JSON.stringify(i)); } catch {}
+  projLuisteraars.forEach((f) => f());
+}
 const projLuisteraars = new Set<() => void>();
 function zetProjecten(p: string[]) {
   projectenNu = p;
@@ -54,13 +64,13 @@ function zetProjecten(p: string[]) {
 function useProjecten() {
   const [, ververs] = useState(0);
   useEffect(() => {
-    try { const t = localStorage.getItem("bm-projecten"); if (t) projectenNu = JSON.parse(t); } catch {}
+    try { const t = localStorage.getItem("bm-projecten"); if (t) projectenNu = JSON.parse(t); const i = localStorage.getItem("bm-project-info"); if (i) infoNu = JSON.parse(i); } catch {}
     const f = () => ververs((n) => n + 1);
     projLuisteraars.add(f);
     f();
     return () => { projLuisteraars.delete(f); };
   }, []);
-  return { projecten: projectenNu, zetProjecten };
+  return { projecten: projectenNu, zetProjecten, info: infoNu, zetInfo };
 }
 
 const T = {
@@ -313,7 +323,7 @@ function WeekKiezer({ maandag, setMaandag, label, taal }: { maandag: Date; setMa
 
 /* ---------- monteur: één scherm, de week ---------- */
 function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
-  const { projecten } = useProjecten();
+  const { projecten, info } = useProjecten();
   const t = T[taal];
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const k = sleutel(naam, maandag);
@@ -344,6 +354,7 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: str
             {gepland && (
               <div className="mb-3 rounded-xl bg-blue-50 p-3">
                 <p className="flex items-start gap-2 font-semibold text-[#1E5079]"><MapPin className="mt-0.5 size-4 shrink-0" /> {gepland.klant}</p>
+                {info[gepland.klant] && <p className="mt-1 text-sm text-slate-600">{info[gepland.klant]}</p>}
                 {gepland.instructie && <p className="mt-1 text-sm text-slate-700"><span className="font-semibold">{t.vanBart}:</span> {gepland.instructie}</p>}
                 <a href={`https://maps.google.com/?q=${encodeURIComponent(gepland.klant.split(", ").slice(1).join(", ") + " Den Haag")}`} target="_blank" rel="noopener" className="mt-2 inline-block text-sm font-semibold text-[#1E5079] underline">{t.route}</a>
               </div>
@@ -457,7 +468,7 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
 /* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
 function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
   const { team } = useTeam();
-  const { projecten } = useProjecten();
+  const { projecten, info } = useProjecten();
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const [open, setOpen] = useState<null | { klant: string; dag: number }>(null);
   const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
@@ -499,7 +510,7 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
           <tbody>
             {projecten.map((klant) => (
               <tr key={klant} className="border-b border-slate-100 last:border-0">
-                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span></td>
+                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
                 {dagen.map((_, d) => {
                   const wie = team.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
                   const opdracht = wie.map((m) => plan[planSleutel(m, maandag, d)]?.instructie).find(Boolean);
@@ -625,7 +636,9 @@ function TeamBeheer() {
 
 /* ---------- Bart: zijn projecten instellen ---------- */
 function ProjectBeheer() {
-  const { projecten, zetProjecten } = useProjecten();
+  const { projecten, zetProjecten, info, zetInfo } = useProjecten();
+  const [wat, setWat] = useState("");
+  const [bewerk, setBewerk] = useState<string | null>(null);
   const [klant, setKlant] = useState("");
   const [adres, setAdres] = useState("");
   const [weg, setWeg] = useState<string | null>(null);
@@ -638,9 +651,14 @@ function ProjectBeheer() {
         {projecten.map((p) => {
           const [k, ...rest] = p.split(", ");
           return (
-            <div key={p} className="flex items-center gap-3 border-b border-slate-100 p-4 last:border-0">
+            <div key={p} className="flex items-start gap-3 border-b border-slate-100 p-4 last:border-0">
               <MapPin className="size-5 shrink-0 text-[#1E5079]" />
-              <div className="min-w-0 flex-1"><p className="font-semibold">{rest.join(", ") || k}</p>{rest.length > 0 && <p className="text-sm text-slate-500">{k}</p>}</div>
+              <div className="min-w-0 flex-1"><p className="font-semibold">{rest.join(", ") || k}</p>{rest.length > 0 && <p className="text-sm text-slate-500">{k}</p>}
+                {bewerk === p ? (
+                  <textarea autoFocus defaultValue={info[p] ?? ""} rows={3} onBlur={(e) => { zetInfo({ ...info, [p]: e.target.value.trim() }); setBewerk(null); }} className="mt-2 w-full rounded-xl border border-slate-300 p-2 text-sm" />
+                ) : (
+                  <button onClick={() => setBewerk(p)} className="mt-1 block text-left text-sm text-slate-700">{info[p] || <span className="text-[#1E5079] underline">Omschrijving toevoegen</span>}</button>
+                )}</div>
               {weg === p ? (
                 <span className="flex gap-2">
                   <button onClick={() => { zetProjecten(projecten.filter((x) => x !== p)); setWeg(null); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white">Ja, weghalen</button>
@@ -660,13 +678,15 @@ function ProjectBeheer() {
           const n = `${klant.trim()}, ${adres.trim()}`;
           if (!klant.trim() || !adres.trim() || projecten.includes(n)) return;
           zetProjecten([...projecten, n]);
-          setKlant(""); setAdres("");
+          if (wat.trim()) zetInfo({ ...info, [n]: wat.trim() });
+          setKlant(""); setAdres(""); setWat("");
         }}>
         <p className="font-bold">Project toevoegen</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <input value={klant} onChange={(e) => setKlant(e.target.value)} placeholder="Klant, bijv. Familie Bakker" className={veld} />
           <input value={adres} onChange={(e) => setAdres(e.target.value)} placeholder="Adres, bijv. Kerkstraat 5" className={veld} />
         </div>
+        <textarea value={wat} onChange={(e) => setWat(e.target.value)} rows={3} placeholder="Wat voor project en wat moet er gebeuren? Bijv. 4 kunststof kozijnen vervangen achterkant." className={veld} />
         <button disabled={!klant.trim() || !adres.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E5079] p-3 font-bold text-white disabled:opacity-40"><Plus className="size-4" /> Toevoegen</button>
         <p className="text-xs text-slate-500">Een nieuw project staat meteen in het planbord en bij de monteurs in de lijst.</p>
       </form>

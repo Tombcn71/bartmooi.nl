@@ -486,8 +486,8 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
                       <button onClick={() => setOpen({ klant, dag: d })} className={`min-h-14 w-full rounded-lg p-1.5 text-left text-xs ${wie.length ? "bg-blue-50 hover:bg-blue-100" : "text-slate-300 hover:bg-slate-50"}`}>
                         {wie.length ? (
                           <>
+                            {opdracht && <span className="mb-1.5 line-clamp-3 block font-medium text-slate-800">{opdracht}</span>}
                             <span className="flex flex-wrap gap-1">{wie.map((m) => <span key={m} className="rounded-full bg-[#1E5079] px-2 py-0.5 text-[11px] font-semibold text-white">{m}</span>)}</span>
-                            {opdracht && <span className="mt-1 line-clamp-2 block text-slate-600">{opdracht}</span>}
                           </>
                         ) : "+"}
                       </button>

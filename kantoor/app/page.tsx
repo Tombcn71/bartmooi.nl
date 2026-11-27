@@ -50,6 +50,16 @@ let infoNu: Record<string, string> = {
   [KLANTEN[1]]: "Rolluiken: 3 elektrische rolluiken aan de voorkant.",
   [KLANTEN[2]]: "Nieuwbouw: inmeten en plaatsen van 6 aluminium ramen.",
 };
+type Periode = { start: string; eind: string };
+let periodeNu: Record<string, Periode> = {};
+function zetPeriode(i: Record<string, Periode>) {
+  periodeNu = i;
+  try { localStorage.setItem("bm-project-periode", JSON.stringify(i)); } catch {}
+  projLuisteraars.forEach((f) => f());
+}
+function isoDag(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function datumNL(iso: string) { return iso ? new Date(iso + "T12:00").toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : ""; }
+function periodeTekst(p?: Periode) { if (!p || (!p.start && !p.eind)) return ""; return `${datumNL(p.start) || "?"} – ${datumNL(p.eind) || "?"}`; }
 function zetInfo(i: Record<string, string>) {
   infoNu = i;
   try { localStorage.setItem("bm-project-info", JSON.stringify(i)); } catch {}
@@ -64,13 +74,13 @@ function zetProjecten(p: string[]) {
 function useProjecten() {
   const [, ververs] = useState(0);
   useEffect(() => {
-    try { const t = localStorage.getItem("bm-projecten"); if (t) projectenNu = JSON.parse(t); const i = localStorage.getItem("bm-project-info"); if (i) infoNu = JSON.parse(i); } catch {}
+    try { const t = localStorage.getItem("bm-projecten"); if (t) projectenNu = JSON.parse(t); const i = localStorage.getItem("bm-project-info"); if (i) infoNu = JSON.parse(i); const pe = localStorage.getItem("bm-project-periode"); if (pe) periodeNu = JSON.parse(pe); else { const m = new Date(); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); const plus = (n: number) => { const d = new Date(m); d.setDate(d.getDate() + n); return isoDag(d); }; periodeNu = { [KLANTEN[0]]: { start: plus(-7), eind: plus(11) }, [KLANTEN[1]]: { start: plus(0), eind: plus(1) }, [KLANTEN[2]]: { start: plus(2), eind: plus(25) } }; } } catch {}
     const f = () => ververs((n) => n + 1);
     projLuisteraars.add(f);
     f();
     return () => { projLuisteraars.delete(f); };
   }, []);
-  return { projecten: projectenNu, zetProjecten, info: infoNu, zetInfo };
+  return { projecten: projectenNu, zetProjecten, info: infoNu, zetInfo, periode: periodeNu, zetPeriode };
 }
 
 const T = {
@@ -323,7 +333,7 @@ function WeekKiezer({ maandag, setMaandag, label, taal }: { maandag: Date; setMa
 
 /* ---------- monteur: één scherm, de week ---------- */
 function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: string; taal: Taal; setTaal: (t: Taal) => void; terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
-  const { projecten, info } = useProjecten();
+  const { projecten, info, periode } = useProjecten();
   const t = T[taal];
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const k = sleutel(naam, maandag);
@@ -468,7 +478,7 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
 /* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
 function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
   const { team } = useTeam();
-  const { projecten, info } = useProjecten();
+  const { projecten, info, periode } = useProjecten();
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const [open, setOpen] = useState<null | { klant: string; dag: number }>(null);
   const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
@@ -510,12 +520,15 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
           <tbody>
             {projecten.map((klant) => (
               <tr key={klant} className="border-b border-slate-100 last:border-0">
-                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
+                <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span>{periodeTekst(periode[klant]) && <span className="mt-1 block text-xs font-semibold text-[#1E5079]">{periodeTekst(periode[klant])}</span>}{info[klant] && <span className="mt-1 line-clamp-3 block text-xs text-slate-600">{info[klant]}</span>}</td>
                 {dagen.map((_, d) => {
                   const wie = team.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
+                  const dagIso = (() => { const x = new Date(maandag); x.setDate(x.getDate() + d); return isoDag(x); })();
+                  const pr = periode[klant];
+                  const buiten = !!pr && ((!!pr.start && dagIso < pr.start) || (!!pr.eind && dagIso > pr.eind));
                   const opdracht = wie.map((m) => plan[planSleutel(m, maandag, d)]?.instructie).find(Boolean);
                   return (
-                    <td key={d} className="p-1 align-top">
+                    <td key={d} className={`p-1 align-top ${buiten ? "bg-slate-100/70" : ""}`}>
                       <button onClick={() => setOpen({ klant, dag: d })} className={`min-h-14 w-full rounded-lg p-1.5 text-left text-xs ${wie.length ? "bg-blue-50 hover:bg-blue-100" : "text-slate-300 hover:bg-slate-50"}`}>
                         {wie.length ? (
                           <>
@@ -636,7 +649,9 @@ function TeamBeheer() {
 
 /* ---------- Bart: zijn projecten instellen ---------- */
 function ProjectBeheer() {
-  const { projecten, zetProjecten, info, zetInfo } = useProjecten();
+  const { projecten, zetProjecten, info, zetInfo, periode, zetPeriode } = useProjecten();
+  const [start, setStart] = useState("");
+  const [eind, setEind] = useState("");
   const [wat, setWat] = useState("");
   const [bewerk, setBewerk] = useState<string | null>(null);
   const [klant, setKlant] = useState("");
@@ -654,6 +669,11 @@ function ProjectBeheer() {
             <div key={p} className="flex items-start gap-3 border-b border-slate-100 p-4 last:border-0">
               <MapPin className="size-5 shrink-0 text-[#1E5079]" />
               <div className="min-w-0 flex-1"><p className="font-semibold">{rest.join(", ") || k}</p>{rest.length > 0 && <p className="text-sm text-slate-500">{k}</p>}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                  <input type="date" value={periode[p]?.start ?? ""} onChange={(e) => zetPeriode({ ...periode, [p]: { start: e.target.value, eind: periode[p]?.eind ?? "" } })} className="rounded-lg border border-slate-300 px-2 py-1" />
+                  <span className="text-slate-400">tot</span>
+                  <input type="date" value={periode[p]?.eind ?? ""} onChange={(e) => zetPeriode({ ...periode, [p]: { start: periode[p]?.start ?? "", eind: e.target.value } })} className="rounded-lg border border-slate-300 px-2 py-1" />
+                </div>
                 {bewerk === p ? (
                   <textarea autoFocus defaultValue={info[p] ?? ""} rows={3} onBlur={(e) => { zetInfo({ ...info, [p]: e.target.value.trim() }); setBewerk(null); }} className="mt-2 w-full rounded-xl border border-slate-300 p-2 text-sm" />
                 ) : (
@@ -679,7 +699,8 @@ function ProjectBeheer() {
           if (!klant.trim() || !adres.trim() || projecten.includes(n)) return;
           zetProjecten([...projecten, n]);
           if (wat.trim()) zetInfo({ ...info, [n]: wat.trim() });
-          setKlant(""); setAdres(""); setWat("");
+          if (start || eind) zetPeriode({ ...periode, [n]: { start, eind } });
+          setKlant(""); setAdres(""); setWat(""); setStart(""); setEind("");
         }}>
         <p className="font-bold">Project toevoegen</p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -687,6 +708,10 @@ function ProjectBeheer() {
           <input value={adres} onChange={(e) => setAdres(e.target.value)} placeholder="Adres, bijv. Kerkstraat 5" className={veld} />
         </div>
         <textarea value={wat} onChange={(e) => setWat(e.target.value)} rows={3} placeholder="Wat voor project en wat moet er gebeuren? Bijv. 4 kunststof kozijnen vervangen achterkant." className={veld} />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-sm font-semibold">Begindatum<input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={veld + " mt-1"} /></label>
+          <label className="text-sm font-semibold">Einddatum<input type="date" value={eind} min={start || undefined} onChange={(e) => setEind(e.target.value)} className={veld + " mt-1"} /></label>
+        </div>
         <button disabled={!klant.trim() || !adres.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E5079] p-3 font-bold text-white disabled:opacity-40"><Plus className="size-4" /> Toevoegen</button>
         <p className="text-xs text-slate-500">Een nieuw project staat meteen in het planbord en bij de monteurs in de lijst.</p>
       </form>

@@ -13,7 +13,7 @@ type Taal = "nl" | "pl";
 type Regel = { dag: number; klant: string; uren: number; notitie: string };
 type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
 
-const MONTEURS = ["Piotr", "Marek", "Tomasz", "Kamil", "Paweł", "Jakub", "Michał", "Łukasz", "Adam", "Bartek", "Krzysztof", "Daniel", "Rafał", "Szymon", "Wojtek"];
+const MONTEURS = ["Piotr", "Marek", "Tomasz", "Kamil", "Paweł"];
 const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, Zeestraat 31", "Van Dijk Bouw, Hoefkade 140"];
 
 const T = {

@@ -14,7 +14,33 @@ type Taal = "nl" | "pl";
 type Regel = { dag: number; klant: string; uren: number; notitie: string };
 type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
 
-const MONTEURS = ["Piotr", "Marek", "Tomasz", "Kamil", "Paweł"];
+/* ---------- het team van Bart: wie er werken (Bart stelt dit zelf in) ---------- */
+type Lid = { naam: string; telefoon: string };
+const STANDAARD_TEAM: Lid[] = [
+  { naam: "Piotr", telefoon: "06 1111 1111" }, { naam: "Marek", telefoon: "06 2222 2222" }, { naam: "Tomasz", telefoon: "06 3333 3333" },
+  { naam: "Kamil", telefoon: "06 4444 4444" }, { naam: "Paweł", telefoon: "06 5555 5555" },
+];
+let teamNu: Lid[] = STANDAARD_TEAM;
+const luisteraars = new Set<() => void>();
+function laadTeam() {
+  try { const t = localStorage.getItem("bm-team"); if (t) teamNu = JSON.parse(t); } catch {}
+}
+function zetTeam(t: Lid[]) {
+  teamNu = t;
+  try { localStorage.setItem("bm-team", JSON.stringify(t)); } catch {}
+  luisteraars.forEach((f) => f());
+}
+function useTeam() {
+  const [, ververs] = useState(0);
+  useEffect(() => {
+    laadTeam();
+    const f = () => ververs((n) => n + 1);
+    luisteraars.add(f);
+    f();
+    return () => { luisteraars.delete(f); };
+  }, []);
+  return { leden: teamNu, team: teamNu.map((l) => l.naam), zetTeam };
+}
 const KLANTEN = ["Familie de Vries, Laan van Meerdervoort 12", "Familie Jansen, Zeestraat 31", "Van Dijk Bouw, Hoefkade 140"];
 
 const T = {
@@ -188,11 +214,12 @@ function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => vo
 }
 
 function KantoorOmgeving(p: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
-  const [tab, setTab] = useState<"plan" | "uren" | "cert">("plan");
+  const { team } = useTeam();
+  const [tab, setTab] = useState<"plan" | "uren" | "cert" | "team">("plan");
   return (
     <div>
-      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"]]} actief={tab} zet={setTab} /></div>
-      {tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={MONTEURS} /></main>}
+      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-8"><Tabs tabs={[["plan", "Planning"], ["uren", "Uren"], ["cert", "Certificaten"], ["team", "Team"]]} actief={tab} zet={setTab} /></div>
+      {tab === "team" ? <TeamBeheer /> : tab === "plan" ? <Planbord plan={p.plan} zetPlan={p.zetPlan} /> : tab === "uren" ? <Bart {...p} /> : <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-8"><h1 className="text-2xl font-bold">Certificaten</h1><CertificatenKantoor monteurs={team} /></main>}
     </div>
   );
 }
@@ -355,9 +382,10 @@ function Monteur({ naam, taal, setTaal, terug, data, bewaar, plan }: { naam: str
 
 /* ---------- Bart: de week van alle monteurs ---------- */
 function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof useOpslag> & ReturnType<typeof usePlanning>) {
+  const { team } = useTeam();
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const dagen = T.nl.dagen.map((d) => d.slice(0, 2));
-  const rijen = useMemo(() => MONTEURS.map((m) => ({ m, k: sleutel(m, maandag), w: data[sleutel(m, maandag)] })), [data, maandag]);
+  const rijen = useMemo(() => team.map((m) => ({ m, k: sleutel(m, maandag), w: data[sleutel(m, maandag)] })), [data, maandag, team]);
 
 
 
@@ -407,6 +435,7 @@ function Bart({ terug, data, bewaar }: { terug: () => void } & ReturnType<typeof
 
 /* ---------- Bart: het planbord, maandag samen de week verdelen ---------- */
 function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
+  const { team } = useTeam();
   const [maandag, setMaandag] = useState(() => maandagVan(new Date()));
   const [open, setOpen] = useState<null | { klant: string; dag: number }>(null);
   const dagen = ["Ma", "Di", "Wo", "Do", "Vr", "Za"];
@@ -421,9 +450,9 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
       {(() => {
         // Korte cijfers voor vandaag (of maandag, als je een andere week bekijkt).
         const d = ditIsDezeWeek && vandaag < 6 ? vandaag : 0;
-        const vandaagPlan = MONTEURS.map((m) => plan[planSleutel(m, maandag, d)]).filter(Boolean);
+        const vandaagPlan = team.map((m) => plan[planSleutel(m, maandag, d)]).filter(Boolean);
         const klussen = new Set(vandaagPlan.map((p) => p!.klant)).size;
-        const vrij = MONTEURS.length - vandaagPlan.length;
+        const vrij = team.length - vandaagPlan.length;
         const label = ditIsDezeWeek && vandaag < 6 ? "vandaag" : "op maandag";
         return (
           <div className="grid grid-cols-3 gap-2">
@@ -450,7 +479,7 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
               <tr key={klant} className="border-b border-slate-100 last:border-0">
                 <td className="p-3 align-top"><span className="block font-semibold leading-tight">{kort(klant)}</span><span className="text-xs text-slate-500">{klant.split(", ")[0]}</span></td>
                 {dagen.map((_, d) => {
-                  const wie = MONTEURS.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
+                  const wie = team.filter((m) => plan[planSleutel(m, maandag, d)]?.klant === klant);
                   const opdracht = wie.map((m) => plan[planSleutel(m, maandag, d)]?.instructie).find(Boolean);
                   return (
                     <td key={d} className="p-1 align-top">
@@ -478,13 +507,14 @@ function Planbord({ plan, zetPlan }: ReturnType<typeof usePlanning>) {
 }
 
 function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: string; dag: number; maandag: Date; sluit: () => void } & ReturnType<typeof usePlanning>) {
-  const nu = MONTEURS.filter((m) => plan[planSleutel(m, maandag, dag)]?.klant === klant);
+  const { team } = useTeam();
+  const nu = team.filter((m) => plan[planSleutel(m, maandag, dag)]?.klant === klant);
   const [wie, setWie] = useState<string[]>(nu);
   const [instructie, setInstructie] = useState(nu.map((m) => plan[planSleutel(m, maandag, dag)]?.instructie).find(Boolean) ?? "");
   const [heleWeek, setHeleWeek] = useState(false);
   const opslaan = () => {
     for (const d of heleWeek ? [0, 1, 2, 3, 4] : [dag])
-      for (const m of MONTEURS) {
+      for (const m of team) {
         const k = planSleutel(m, maandag, d);
         if (wie.includes(m)) zetPlan(k, { klant, instructie });
         else if (plan[k]?.klant === klant) zetPlan(k, null);
@@ -500,7 +530,7 @@ function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: str
         </div>
         <div className="text-sm font-semibold">Wie gaat erheen?
           <div className="mt-1 flex flex-wrap gap-2">
-            {MONTEURS.map((m) => {
+            {team.map((m) => {
               const aan = wie.includes(m);
               const elders = plan[planSleutel(m, maandag, dag)];
               const bezet = !aan && elders && elders.klant !== klant;
@@ -520,5 +550,53 @@ function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: str
         <button onClick={opslaan} className="w-full rounded-xl bg-[#1E5079] py-3 font-bold text-white">Opslaan</button>
       </div>
     </div>
+  );
+}
+
+/* ---------- Bart: zijn team instellen ---------- */
+function TeamBeheer() {
+  const { leden, zetTeam } = useTeam();
+  const [naam, setNaam] = useState("");
+  const [telefoon, setTelefoon] = useState("");
+  const [weg, setWeg] = useState<string | null>(null);
+  const veld = "w-full rounded-xl border border-slate-300 bg-white p-3 text-base";
+  return (
+    <main className="mx-auto max-w-2xl space-y-4 p-4 md:p-8">
+      <h1 className="text-2xl font-bold">Team</h1>
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        {leden.length === 0 && <p className="p-4 text-slate-500">Nog niemand in het team.</p>}
+        {leden.map((l) => (
+          <div key={l.naam} className="flex items-center gap-3 border-b border-slate-100 p-4 last:border-0">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1E5079] font-bold text-white">{l.naam[0]}</span>
+            <div className="min-w-0 flex-1"><p className="font-semibold">{l.naam}</p><p className="text-sm text-slate-500">{l.telefoon || "Geen telefoonnummer"}</p></div>
+            {weg === l.naam ? (
+              <span className="flex gap-2">
+                <button onClick={() => { zetTeam(leden.filter((x) => x.naam !== l.naam)); setWeg(null); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white">Ja, weghalen</button>
+                <button onClick={() => setWeg(null)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">Nee</button>
+              </span>
+            ) : (
+              <button onClick={() => setWeg(l.naam)} className="text-sm font-semibold text-red-600">Weghalen</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <form
+        className="space-y-2 rounded-2xl bg-white p-4 shadow-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = naam.trim();
+          if (!n || leden.some((l) => l.naam.toLowerCase() === n.toLowerCase())) return;
+          zetTeam([...leden, { naam: n, telefoon: telefoon.trim() }]);
+          setNaam(""); setTelefoon("");
+        }}>
+        <p className="font-bold">Iemand toevoegen</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="Naam" className={veld} />
+          <input value={telefoon} onChange={(e) => setTelefoon(e.target.value)} placeholder="Telefoonnummer" inputMode="tel" className={veld} />
+        </div>
+        <button disabled={!naam.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E5079] p-3 font-bold text-white disabled:opacity-40"><Plus className="size-4" /> Toevoegen</button>
+        <p className="text-xs text-slate-500">Straks krijgt een nieuwe monteur een sms met zijn eigen link naar de app.</p>
+      </form>
+    </main>
   );
 }

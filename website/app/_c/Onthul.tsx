@@ -12,7 +12,9 @@ export function Direct({ anim, vertraging = 0, children }: { anim: Soort; vertra
   return <div className={`direct ${anim}${vertraging ? ` vz-${vertraging}` : ""}`}>{children}</div>;
 }
 
-const SCRIPT = "(function(){var e=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)){for(var k=0;k<e.length;k++)e[k].classList.add('aan');return}var o=new IntersectionObserver(function(l){for(var i=0;i<l.length;i++){if(l[i].isIntersecting){l[i].target.classList.add('aan');o.unobserve(l[i].target)}}},{rootMargin:'0px 0px -10% 0px',threshold:.05});for(var k=0;k<e.length;k++)o.observe(e[k])})()";
+// Houdt de hele tijd in de gaten (ook na doorklikken, taal wisselen of een update van React) welke .reveal nog niet zichtbaar is.
+// Al eens zichtbaar geweest → meteen weer zichtbaar. Nieuw → zichtbaar zodra het in beeld komt. Blijft een paar honderd bytes, geen extra bestand.
+const SCRIPT = "(function(){if(window.__onthul)return;window.__onthul=1;var io='IntersectionObserver' in window?new IntersectionObserver(function(l){for(var i=0;i<l.length;i++){if(l[i].isIntersecting){var t=l[i].target;t.__z=1;t.classList.add('aan');io.unobserve(t)}}},{rootMargin:'0px 0px -10% 0px',threshold:.05}):null;function s(){var e=document.querySelectorAll('.reveal:not(.aan)');for(var k=0;k<e.length;k++){var t=e[k];if(t.__z||!io){t.classList.add('aan')}else if(!t.__o){t.__o=1;io.observe(t)}}}s();new MutationObserver(s).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})})()";
 
 /** Eén keer per pagina, onderaan: laat alle Reveal-onderdelen verschijnen als ze in beeld komen. */
 export function OnthulScript() {

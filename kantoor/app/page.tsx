@@ -200,7 +200,10 @@ export default function Start() {
     r ? ga(r.soort === "bart" ? "kantoor" : "monteur") : ga("");
   };
   const uitloggen = () => { try { localStorage.removeItem("bm-monteur"); } catch {} setIngelogd(null); ga(""); };
-  const [taal, setTaal] = useState<Taal>("nl");
+  // Monteurs: standaard Pools, Nederlands kan; de keuze wordt onthouden op deze telefoon.
+  const [taal, zetTaal] = useState<Taal>("pl");
+  useEffect(() => { try { const t = localStorage.getItem("bm-taal"); if (t === "nl" || t === "pl") zetTaal(t); } catch {} }, []);
+  const setTaal = (t: Taal) => { zetTaal(t); try { localStorage.setItem("bm-taal", t); } catch {} };
   const opslag = { ...useOpslag(), ...usePlanning() };
   const t = T[taal];
 
@@ -352,7 +355,7 @@ function MijnOverzicht({ naam, taal, data }: { naam: string; taal: Taal; data: R
 function TaalKnop({ taal, setTaal }: { taal: Taal; setTaal: (t: Taal) => void }) {
   return (
     <div className="flex rounded-full bg-slate-200 p-0.5 text-sm font-bold">
-      {(["nl", "pl"] as const).map((x) => (
+      {(["pl", "nl"] as const).map((x) => (
         <button key={x} onClick={() => setTaal(x)} className={`rounded-full px-3 py-1 uppercase ${taal === x ? "bg-white shadow-sm" : "text-slate-600"}`}>{x}</button>
       ))}
     </div>

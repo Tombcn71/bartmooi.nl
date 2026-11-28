@@ -1,5 +1,6 @@
 import NextLink from "next/link";
-import { FilePlus, FileText, Link2 } from "lucide-react";
+import { Briefcase, FilePlus, FileText, Link2 } from "lucide-react";
+import { KANTOOR_URL } from "@/lib/kantoor";
 import { InstallHint } from "./install-hint";
 import { StopInmeten } from "./stop-inmeten";
 
@@ -27,6 +28,12 @@ export default function MetenPage() {
       titel: "Link versturen",
       tekst: "Stuur je klant je linkje via WhatsApp of mail, om zelf zijn prijs te berekenen.",
     },
+    {
+      href: KANTOOR_URL,
+      Icon: Briefcase,
+      titel: "Kantoor",
+      tekst: "Planning, uren, facturen en je team.",
+    },
   ];
 
   return (
@@ -34,17 +41,17 @@ export default function MetenPage() {
       <StopInmeten />
       <InstallHint />
 
-      <div className="grid min-h-0 flex-1 grid-rows-3 gap-3">
+      <div className="grid min-h-0 flex-1 grid-rows-4 gap-3">
         {knoppen.map((k) => (
           <NextLink
             key={k.href}
             href={k.href}
-            className="flex min-h-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 px-5 text-center transition hover:border-brand active:scale-[0.98]">
+            className="flex min-h-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-slate-200 px-5 text-center transition hover:border-brand active:scale-[0.98]">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-brand text-white">
               <k.Icon className="size-6" />
             </span>
             <span className="text-lg font-bold">{k.titel}</span>
-            <span className="text-sm leading-snug text-slate-500">{k.tekst}</span>
+            <span className="text-sm leading-snug text-slate-500 line-clamp-2">{k.tekst}</span>
           </NextLink>
         ))}
       </div>

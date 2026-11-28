@@ -191,8 +191,15 @@ function useHash() {
 export default function Start() {
   const [hash, ga] = useHash();
   const deel = hash.split("/")[0];
-  const rol: null | { soort: "monteur"; naam: string } | { soort: "bart" } = deel === "monteur" ? { soort: "monteur", naam: "Piotr" } : deel === "kantoor" ? { soort: "bart" } : null;
-  const setRol = (r: typeof rol) => (r ? ga(r.soort === "bart" ? "kantoor" : "monteur") : ga(""));
+  // Wie als monteur is ingelogd, blijft ingelogd op deze telefoon.
+  const [ingelogd, setIngelogd] = useState<string | null>(null);
+  useEffect(() => { try { setIngelogd(localStorage.getItem("bm-monteur")); } catch {} }, []);
+  const rol: null | { soort: "monteur"; naam: string } | { soort: "bart" } = deel === "monteur" ? { soort: "monteur", naam: ingelogd ?? "Piotr" } : deel === "kantoor" ? { soort: "bart" } : null;
+  const setRol = (r: typeof rol) => {
+    if (r?.soort === "monteur") { try { localStorage.setItem("bm-monteur", r.naam); } catch {} setIngelogd(r.naam); }
+    r ? ga(r.soort === "bart" ? "kantoor" : "monteur") : ga("");
+  };
+  const uitloggen = () => { try { localStorage.removeItem("bm-monteur"); } catch {} setIngelogd(null); ga(""); };
   const [taal, setTaal] = useState<Taal>("nl");
   const opslag = { ...useOpslag(), ...usePlanning() };
   const t = T[taal];
@@ -206,6 +213,7 @@ export default function Start() {
         <button onClick={() => history.back()} aria-label="Terug" className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-[#1E5079]"><ChevronLeft className="size-4" /> {taal === "pl" ? "Wstecz" : "Terug"}</button>
         <button onClick={() => history.forward()} aria-label="Vooruit" className="flex items-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-[#1E5079]"><ChevronRight className="size-4" /></button>
         <button onClick={() => ga(rol.soort === "bart" ? "monteur" : "kantoor")} className="ml-auto flex items-center gap-1.5 rounded-xl bg-[#1E5079] px-3 py-2 text-sm font-semibold text-white">{rol.soort === "bart" ? <><HardHat className="size-4" /> Bekijk als monteur</> : <><UserCog className="size-4" /> {taal === "pl" ? "Biuro" : "Naar kantoor"}</>}</button>
+        {rol.soort === "monteur" && ingelogd && <button onClick={uitloggen} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600">{taal === "pl" ? "Wyloguj" : "Uitloggen"}</button>}
       </div>
       {rol.soort === "monteur" ? (
         <MonteurOmgeving naam={rol.naam} taal={taal} setTaal={setTaal} terug={() => setRol(null)} {...opslag} />
@@ -217,45 +225,45 @@ export default function Start() {
 }
 
 /* ---------- inloggen: eerst monteur of kantoor, dan je gegevens ---------- */
-const MONTEUR_TEL: Record<string, string> = { "0611111111": "Piotr", "0622222222": "Marek", "0633333333": "Tomasz" };
 function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => void; kies: (r: { soort: "monteur"; naam: string } | { soort: "bart" }) => void }) {
-  const [wie, setWie] = useState<null | "monteur" | "kantoor">(null);
-  const [tel, setTel] = useState("");
-  const [code, setCode] = useState("");
+  const { leden } = useTeam();
+  const [wie, setWie] = useState<null | "monteur">(null);
+  const [naam, setNaam] = useState("");
+  const [pin, setPin] = useState("");
   const [fout, setFout] = useState("");
   const L = taal === "pl"
-    ? { titel: "Godziny pracy", monteur: "Jestem monterem", kantoor: "Biuro", tel: "Twój numer telefonu", pin: "Kod PIN (4 cyfry)", in: "Zaloguj się", terug: "Wstecz", fout: "Nieprawidłowy numer lub kod." }
-    : { titel: "Werkbonnen", monteur: "Ik ben monteur", kantoor: "Kantoor", tel: "Je telefoonnummer", pin: "Pincode (4 cijfers)", in: "Inloggen", terug: "Terug", fout: "Nummer of pincode klopt niet." };
-  const veld = "w-full rounded-xl border border-slate-300 bg-white p-4 text-lg";
+    ? { titel: "Godziny pracy", monteur: "Jestem monterem", kantoor: "Biuro", naam: "Twoje imię", pin: "Kod PIN", in: "Zaloguj się", terug: "Wstecz", fout: "Imię lub kod PIN jest nieprawidłowy.", welkom: "Zaloguj się imieniem i kodem PIN, który dostałeś od Barta." }
+    : { titel: "Werkbonnen", monteur: "Ik ben monteur", kantoor: "Kantoor", naam: "Je naam", pin: "Pincode", in: "Inloggen", terug: "Terug", fout: "Naam of pincode klopt niet.", welkom: "Log in met je naam en de pincode die je van Bart hebt gekregen." };
+  const veld = "w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 text-lg outline-none focus:border-[#1E5079]";
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{L.titel}</h1>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-2 text-lg font-bold text-[#1E5079]"><span className="grid size-9 place-items-center rounded-xl bg-[#1E5079] text-white"><HardHat className="size-5" /></span> BartMooi</span>
         <TaalKnop taal={taal} setTaal={setTaal} />
       </div>
-      {!wie && (
-        <>
-          <button onClick={() => kies({ soort: "monteur", naam: "Piotr" })} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
+      {!wie ? (
+        <div className="flex flex-1 flex-col justify-center gap-4">
+          <h1 className="mb-2 text-2xl font-bold">{L.titel}</h1>
+          <button onClick={() => setWie("monteur")} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
           <button onClick={() => kies({ soort: "bart" })} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
-        </>
-      )}
-      {wie && (
+        </div>
+      ) : (
         <form
-          className="space-y-3"
+          className="flex flex-1 flex-col justify-center gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (wie === "kantoor") return code.length > 0 ? kies({ soort: "bart" }) : setFout(L.fout);
-            const naam = MONTEUR_TEL[tel.replace(/\D/g, "")];
-            if (naam && code.length === 4) kies({ soort: "monteur", naam });
+            const lid = leden.find((l) => l.naam.toLowerCase() === naam.trim().toLowerCase());
+            if (lid && pinVan(lid) === pin) kies({ soort: "monteur", naam: lid.naam });
             else setFout(L.fout);
           }}>
-          <p className="text-lg font-semibold">{wie === "monteur" ? L.monteur : L.kantoor}</p>
-          {wie === "monteur" && <input inputMode="tel" autoComplete="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder={L.tel} className={veld} />}
-          <input inputMode={wie === "monteur" ? "numeric" : undefined} type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder={wie === "monteur" ? L.pin : "Wachtwoord"} maxLength={wie === "monteur" ? 4 : undefined} className={veld} />
-          {fout && <p className="text-sm text-red-600">{fout}</p>}
-          <button className="w-full rounded-xl bg-[#1E5079] p-4 text-lg font-bold text-white">{L.in}</button>
-          <button type="button" onClick={() => { setWie(null); setFout(""); setCode(""); }} className="w-full p-2 text-slate-600">← {L.terug}</button>
-          <p className="pt-4 text-center text-xs text-slate-500">Voorbeeld: monteur Piotr = 0611111111, Marek = 0622222222, Tomasz = 0633333333, elke pincode van 4 cijfers. Kantoor: elk wachtwoord.</p>
+          <h1 className="text-2xl font-bold">{L.in}</h1>
+          <p className="mb-2 text-slate-600">{L.welkom}</p>
+          <input autoFocus autoComplete="username" autoCapitalize="words" value={naam} onChange={(e) => { setNaam(e.target.value); setFout(""); }} placeholder={L.naam} className={veld} />
+          <input inputMode="numeric" autoComplete="current-password" type="password" value={pin} maxLength={4} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setFout(""); }} placeholder={L.pin} className={veld + " tracking-[0.5em]"} />
+          {fout && <p className="text-sm font-semibold text-red-600">{fout}</p>}
+          <button disabled={!naam.trim() || pin.length !== 4} className="mt-2 w-full rounded-2xl bg-[#1E5079] p-4 text-lg font-bold text-white disabled:opacity-40">{L.in}</button>
+          <button type="button" onClick={() => { setWie(null); setFout(""); setPin(""); }} className="w-full p-3 text-slate-600">← {L.terug}</button>
+          <p className="pt-2 text-center text-xs text-slate-400">Demo: de pincodes staan bij Kantoor → Team.</p>
         </form>
       )}
     </main>

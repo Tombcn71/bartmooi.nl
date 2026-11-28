@@ -693,7 +693,7 @@ function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: str
 }
 
 /* ---------- uitnodigen via WhatsApp ---------- */
-const APP_URL = "https://bartmooi-kantoor.vercel.app";
+const APP_URL = "https://www.bartmooi.nl/team";
 function pinVan(l: Lid) {
   if (l.pin) return l.pin;
   let h = 7; for (const c of l.naam) h = (h * 31 + c.charCodeAt(0)) % 9000;

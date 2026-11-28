@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
   if (process.env.NOINDEX) return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
     rules: [
-      { userAgent: "*", allow: "/", disallow: ["/api/", "/bedankt/"] },
+      { userAgent: "*", allow: "/", disallow: ["/api/", "/bedankt/", "/kantoor/", "/admin/"] },
       ...["Googlebot", "Bingbot", "GPTBot", "OAI-SearchBot", "ChatGPT-User", "Google-Extended", "PerplexityBot", "ClaudeBot", "Claude-User", "anthropic-ai", "Applebot-Extended", "CCBot"].map((userAgent) => ({ userAgent, allow: "/" })),
     ],
     sitemap: `${SITE}/sitemap.xml`,

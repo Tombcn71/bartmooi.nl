@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
       { source: "/feed", destination: "/feed.xml", permanent: true },
       { source: "/feed/", destination: "/feed.xml", permanent: true },
       // De monteurs loggen in via bartmooi.nl/team (de kantoor-app).
-      { source: "/team", destination: "/kantoor/", permanent: false },
-      { source: "/team/", destination: "/kantoor/", permanent: false },
+      { source: "/team", destination: "https://bartmooi-kantoor.vercel.app/", permanent: false },
+      { source: "/team/", destination: "https://bartmooi-kantoor.vercel.app/", permanent: false },
     ];
   },
 };

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MijnCertificaten, CertificatenKantoor } from "./certificaten";
+import { Installeren } from "./installeren";
 import { FacturenKantoor, MijnFacturen, STANDAARD_TARIEF, useProjectPrijs } from "./facturen";
 import { Check, ChevronLeft, ChevronRight, HardHat, Home, MapPin, X, Plus, Send, UserCog } from "lucide-react";
 
@@ -285,6 +286,7 @@ function MonteurOmgeving(p: { naam: string; taal: Taal; setTaal: (t: Taal) => vo
   const tabs: ["uren" | "overzicht" | "cert", string][] = pl ? [["uren", "Godziny"], ["overzicht", "Przegląd"], ["cert", "Certyfikaty"]] : [["uren", "Uren"], ["overzicht", "Mijn overzicht"], ["cert", "Certificaten"]];
   return (
     <div>
+      <Installeren pl={pl} />
       <div className="mx-auto max-w-md px-4 pt-4"><Tabs tabs={tabs} actief={tab} zet={setTab} /></div>
       {tab === "uren" && <Monteur {...p} />}
       {tab === "overzicht" && <main className="mx-auto max-w-md space-y-6 p-4"><MijnOverzicht naam={p.naam} taal={p.taal} data={p.data} /><MijnFacturen naam={p.naam} data={p.data} leden={leden} pl={pl} /></main>}

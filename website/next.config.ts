@@ -37,9 +37,6 @@ const nextConfig: NextConfig = {
       { source: "/author/:path*", destination: "/over-ons/", permanent: true },
       { source: "/feed", destination: "/feed.xml", permanent: true },
       { source: "/feed/", destination: "/feed.xml", permanent: true },
-      // Bart logt in via bartmooi.nl/admin; de inlog zelf staat bij de offerte-app.
-      { source: "/admin", destination: "https://offerte.bartmooi.nl/admin", permanent: false },
-      { source: "/admin/", destination: "https://offerte.bartmooi.nl/admin", permanent: false },
       // De monteurs loggen in via bartmooi.nl/team (de kantoor-app).
       { source: "/team", destination: "https://bartmooi-kantoor.vercel.app/", permanent: false },
       { source: "/team/", destination: "https://bartmooi-kantoor.vercel.app/", permanent: false },

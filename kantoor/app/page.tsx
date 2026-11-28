@@ -227,7 +227,6 @@ export default function Start() {
 /* ---------- inloggen: eerst monteur of kantoor, dan je gegevens ---------- */
 function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => void; kies: (r: { soort: "monteur"; naam: string } | { soort: "bart" }) => void }) {
   const { leden } = useTeam();
-  const [wie, setWie] = useState<null | "monteur">(null);
   const [naam, setNaam] = useState("");
   const [pin, setPin] = useState("");
   const [fout, setFout] = useState("");
@@ -241,13 +240,7 @@ function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => v
         <span className="flex items-center gap-2 text-lg font-bold text-[#1E5079]"><span className="grid size-9 place-items-center rounded-xl bg-[#1E5079] text-white"><HardHat className="size-5" /></span> BartMooi</span>
         <TaalKnop taal={taal} setTaal={setTaal} />
       </div>
-      {!wie ? (
-        <div className="flex flex-1 flex-col justify-center gap-4">
-          <h1 className="mb-2 text-2xl font-bold">{L.titel}</h1>
-          <button onClick={() => setWie("monteur")} className="flex items-center justify-center gap-3 rounded-2xl bg-[#1E5079] p-6 text-xl font-bold text-white shadow-sm"><HardHat className="size-7" /> {L.monteur}</button>
-          <button onClick={() => kies({ soort: "bart" })} className="flex items-center justify-center gap-3 rounded-2xl bg-white p-6 text-xl font-bold shadow-sm"><UserCog className="size-7 text-[#1E5079]" /> {L.kantoor}</button>
-        </div>
-      ) : (
+      {(
         <form
           className="flex flex-1 flex-col justify-center gap-3"
           onSubmit={(e) => {
@@ -262,7 +255,6 @@ function Inloggen({ taal, setTaal, kies }: { taal: Taal; setTaal: (t: Taal) => v
           <input inputMode="numeric" autoComplete="current-password" type="password" value={pin} maxLength={4} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setFout(""); }} placeholder={L.pin} className={veld + " tracking-[0.5em]"} />
           {fout && <p className="text-sm font-semibold text-red-600">{fout}</p>}
           <button disabled={!naam.trim() || pin.length !== 4} className="mt-2 w-full rounded-2xl bg-[#1E5079] p-4 text-lg font-bold text-white disabled:opacity-40">{L.in}</button>
-          <button type="button" onClick={() => { setWie(null); setFout(""); setPin(""); }} className="w-full p-3 text-slate-600">← {L.terug}</button>
           <p className="pt-2 text-center text-xs text-slate-400">Demo: de pincodes staan bij Kantoor → Team.</p>
         </form>
       )}

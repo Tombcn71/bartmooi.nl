@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 /** bartmooi.nl/admin: Bart logt hier één keer in en kiest daarna Kantoor of Offertes. */
 const TEGELS = [
-  { href: "https://bartmooi-kantoor.vercel.app/#kantoor", titel: "Kantoor", tekst: "Planning, uren, facturen en je team.", pad: "M4 7h16v12H4zM9 7V5h6v2" },
+  { href: "/kantoor/#kantoor", titel: "Kantoor", tekst: "Planning, uren, facturen en je team.", pad: "M4 7h16v12H4zM9 7V5h6v2" },
   { href: "https://offerte.bartmooi.nl/admin/offertes", titel: "Offertes", tekst: "Aanvragen, offertes maken en prijzen.", pad: "M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5" },
 ];
 

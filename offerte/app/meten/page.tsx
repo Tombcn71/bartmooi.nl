@@ -11,6 +11,12 @@ import { StopInmeten } from "./stop-inmeten";
 export default function MetenPage() {
   const knoppen = [
     {
+      href: KANTOOR_URL,
+      Icon: Briefcase,
+      titel: "Kantoor",
+      tekst: "Planning, uren, facturen en je team.",
+    },
+    {
       href: "/admin/offertes",
       Icon: FileText,
       titel: "Offertes",
@@ -27,12 +33,6 @@ export default function MetenPage() {
       Icon: Link2,
       titel: "Link versturen",
       tekst: "Stuur je klant je linkje via WhatsApp of mail, om zelf zijn prijs te berekenen.",
-    },
-    {
-      href: KANTOOR_URL,
-      Icon: Briefcase,
-      titel: "Kantoor",
-      tekst: "Planning, uren, facturen en je team.",
     },
   ];
 

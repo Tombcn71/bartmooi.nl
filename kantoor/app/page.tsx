@@ -16,7 +16,7 @@ type Regel = { dag: number; klant: string; uren: number; notitie: string };
 type Week = { regels: Regel[]; ingestuurd: boolean; goedgekeurd: boolean };
 
 /* ---------- het team van Bart: wie er werken (Bart stelt dit zelf in) ---------- */
-type Lid = { naam: string; telefoon: string; bedrijf?: string; kvk?: string; btw?: string; iban?: string; tarief?: number };
+type Lid = { naam: string; telefoon: string; pin?: string; taal?: Taal; bedrijf?: string; kvk?: string; btw?: string; iban?: string; tarief?: number };
 const STANDAARD_TEAM: Lid[] = [
   { naam: "Piotr", telefoon: "06 1111 1111", bedrijf: "PN Montage", kvk: "81234567", btw: "NL862345678B01", iban: "NL12 INGB 0001 2345 67", tarief: 45 },
   { naam: "Marek", telefoon: "06 2222 2222", bedrijf: "Marek Bouw", kvk: "82345678", btw: "NL863456789B01", iban: "NL34 RABO 0123 4567 89", tarief: 42.5 },
@@ -689,6 +689,22 @@ function PlanVenster({ klant, dag, maandag, plan, zetPlan, sluit }: { klant: str
   );
 }
 
+/* ---------- uitnodigen via WhatsApp ---------- */
+const APP_URL = "https://bartmooi-kantoor.vercel.app";
+function pinVan(l: Lid) {
+  if (l.pin) return l.pin;
+  let h = 7; for (const c of l.naam) h = (h * 31 + c.charCodeAt(0)) % 9000;
+  return String(1000 + h);
+}
+function whatsappLink(l: Lid) {
+  const nr = l.telefoon.replace(/\D/g, "").replace(/^0/, "31");
+  const pin = pinVan(l);
+  const tekst = (l.taal ?? "pl") === "pl"
+    ? `Cześć ${l.naam}! Oto Twój link do aplikacji BartMooi: ${APP_URL}\nZaloguj się swoim imieniem (${l.naam}) i kodem PIN: ${pin}\nWskazówka: dodaj aplikację do ekranu głównego telefonu.`
+    : `Hoi ${l.naam}! Hier is je link naar de BartMooi-app: ${APP_URL}\nLog in met je naam (${l.naam}) en pincode: ${pin}\nTip: zet de app op het beginscherm van je telefoon.`;
+  return `https://wa.me/${nr}?text=${encodeURIComponent(tekst)}`;
+}
+
 /* ---------- Bart: zijn team instellen ---------- */
 function TeamBeheer() {
   const { leden, zetTeam } = useTeam();
@@ -707,7 +723,7 @@ function TeamBeheer() {
         {leden.map((l) => (
           <div key={l.naam} className="flex items-start gap-3 border-b border-slate-100 p-4 last:border-0">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1E5079] font-bold text-white">{l.naam[0]}</span>
-            <div className="min-w-0 flex-1"><p className="font-semibold">{l.naam}</p><p className="text-sm text-slate-500">{l.telefoon || "Geen telefoonnummer"} · {l.bedrijf || "geen bedrijf"} · €{(l.tarief ?? STANDAARD_TARIEF).toLocaleString("nl-NL")}/u</p>
+            <div className="min-w-0 flex-1"><p className="font-semibold">{l.naam}</p><p className="text-sm text-slate-500">{l.telefoon || "Geen telefoonnummer"} · pincode {pinVan(l)} · {l.bedrijf || "geen bedrijf"} · €{(l.tarief ?? STANDAARD_TARIEF).toLocaleString("nl-NL")}/u</p>
               <button onClick={() => setGegevens(gegevens === l.naam ? null : l.naam)} className="mt-1 text-sm font-semibold text-[#1E5079] underline">{gegevens === l.naam ? "Klaar" : "Bedrijfsgegevens"}</button>
               {gegevens === l.naam && (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -719,6 +735,10 @@ function TeamBeheer() {
                 </div>
               )}
             </div>
+            <span className="flex shrink-0 items-center gap-1">
+              <button onClick={() => pas(l.naam, { taal: (l.taal ?? "pl") === "pl" ? "nl" : "pl" })} title="Taal van het bericht" className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold uppercase text-slate-600">{l.taal ?? "pl"}</button>
+              {l.telefoon && <a href={whatsappLink(l)} target="_blank" rel="noopener" title="Stuur link en pincode via WhatsApp" className="flex items-center gap-1 rounded-lg bg-[#25D366] px-3 py-1.5 text-sm font-bold text-white"><Send className="size-4" /> WhatsApp</a>}
+            </span>
             {weg === l.naam ? (
               <span className="flex gap-2">
                 <button onClick={() => { zetTeam(leden.filter((x) => x.naam !== l.naam)); setWeg(null); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white">Ja, weghalen</button>
@@ -736,7 +756,7 @@ function TeamBeheer() {
           e.preventDefault();
           const n = naam.trim();
           if (!n || leden.some((l) => l.naam.toLowerCase() === n.toLowerCase())) return;
-          zetTeam([...leden, { naam: n, telefoon: telefoon.trim(), tarief: parseFloat(tarief.replace(",", ".")) || STANDAARD_TARIEF }]);
+          zetTeam([...leden, { naam: n, telefoon: telefoon.trim(), pin: String(1000 + Math.floor(Math.random() * 9000)), tarief: parseFloat(tarief.replace(",", ".")) || STANDAARD_TARIEF }]);
           setNaam(""); setTelefoon(""); setTarief("");
         }}>
         <p className="font-bold">Iemand toevoegen</p>

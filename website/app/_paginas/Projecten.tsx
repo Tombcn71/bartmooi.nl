@@ -10,7 +10,7 @@ const projecten = ["Erker Den Haag", "Hamed Moordrecht", "Wassenaar", "Inge Den 
 export function Projecten() {
   return (
     <>
-      <Schema pad="/projecten/" type="CollectionPage" kruimel={[["Home", "/"], ["Projecten", "/projecten/"]]} extra={[{ "@type": "ItemList", name: "Gerealiseerde projecten", itemListElement: projecten.map((naam, i) => ({ "@type": "ListItem", position: i + 1, item: { "@type": "CreativeWork", name: naam, creator: { "@id": "https://bartmooi.nl/#bedrijf" } } })) }]} />
+      <Schema pad="/projecten/" type="CollectionPage" kruimel={[["Home", "/"], ["Projecten", "/projecten/"]]} extra={[{ "@type": "ItemList", name: "Gerealiseerde projecten", itemListElement: projecten.map((naam, i) => ({ "@type": "ListItem", position: i + 1, item: { "@type": "CreativeWork", name: naam, creator: { "@id": "https://www.bartmooi.nl/#bedrijf" } } })) }]} />
       <section className="bg-licht pb-[60px] pt-[48px] md:pb-[132px] md:pt-[56px]">
         <Container className="max-w-[1208px]">
           <div className="grid items-center gap-5 md:grid-cols-[590px_590px] md:justify-between">

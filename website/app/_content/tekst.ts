@@ -10,6 +10,6 @@ export const feiten = `BartMooi B.V. is een kozijnenbedrijf in Den Haag. Het bed
 - E-mail: info@bartmooi.nl
 - Openingstijden: maandag t/m vrijdag 09:00 - 17:00
 - KvK: 98506560
-- Website: https://bartmooi.nl/`;
+- Website: https://www.bartmooi.nl/`;
 
 export { posts };

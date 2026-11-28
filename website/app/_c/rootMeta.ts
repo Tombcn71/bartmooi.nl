@@ -5,9 +5,9 @@ import { vertaal } from "../_i18n";
 /** Metagegevens die voor de hele site gelden (per taal). */
 export function rootMeta(taal: Taal): Metadata {
   return {
-    metadataBase: new URL("https://bartmooi.nl"),
+    metadataBase: new URL("https://www.bartmooi.nl"),
     applicationName: "BartMooi",
-    authors: [{ name: "BartMooi B.V.", url: "https://bartmooi.nl/" }],
+    authors: [{ name: "BartMooi B.V.", url: "https://www.bartmooi.nl/" }],
     alternates: { types: { "application/rss+xml": "/feed.xml" } },
     openGraph: { locale: OG_TAAL[taal], siteName: "BartMooi" },
     robots: process.env.NOINDEX

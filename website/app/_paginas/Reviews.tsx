@@ -19,7 +19,7 @@ const cijfers = [["benefit-4-white.png", 7, "+", "Ervaren monteurs"], ["benefit-
 export function Reviews() {
   return (
     <>
-      <Schema pad="/reviews/" kruimel={[["Home", "/"], ["Reviews", "/reviews/"]]} extra={reviews.map(([regels, naam]) => ({ "@type": "Review", itemReviewed: { "@id": "https://bartmooi.nl/#bedrijf" }, author: { "@type": "Person", name: naam }, reviewBody: regels.join(" ").replace(/[„”]/g, ""), reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 }, inLanguage: "nl-NL" }))} />
+      <Schema pad="/reviews/" kruimel={[["Home", "/"], ["Reviews", "/reviews/"]]} extra={reviews.map(([regels, naam]) => ({ "@type": "Review", itemReviewed: { "@id": "https://www.bartmooi.nl/#bedrijf" }, author: { "@type": "Person", name: naam }, reviewBody: regels.join(" ").replace(/[„”]/g, ""), reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 }, inLanguage: "nl-NL" }))} />
       <JsonLd data={kruimel([["Home", "/"], ["Reviews", "/reviews/"]])} />
       <Titel kop="Wat onze klanten {{over ons zeggen}}" pb="md:pb-[180px]" />
       <section className="pb-[60px] md:pb-[120px]">

@@ -3,7 +3,7 @@ import { seo } from "../_content/seo";
 import { ACTIEF, HTML_TAAL, OG_TAAL, PADEN, pad, type Taal } from "../_i18n/talen";
 import { vertaal } from "../_i18n";
 
-export const SITE = "https://bartmooi.nl";
+export const SITE = "https://www.bartmooi.nl";
 
 /** hreflang: de talen waarin deze pagina echt bestaat (alleen actieve talen), met x-default naar het Nederlands. */
 export function talen(padNl: string): Record<string, string> {

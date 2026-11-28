@@ -1,6 +1,6 @@
 import { posts } from "../../_content/posts";
 
-const SITE = "https://bartmooi.nl";
+const SITE = "https://www.bartmooi.nl";
 // De IndexNow-sleutel is openbaar: hij staat ook als bestand in /public (/<sleutel>.txt), zodat Bing kan controleren dat de site van ons is.
 const INDEXNOW_SLEUTEL = "b4d7a2c91e5f4a60b8c3d1e2f7a9b6c5";
 
@@ -10,7 +10,7 @@ export async function stuurNaarIndexNow(paden: string[]) {
   const r = await fetch("https://api.indexnow.org/indexnow", {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify({ host: "bartmooi.nl", key: INDEXNOW_SLEUTEL, keyLocation: `${SITE}/${INDEXNOW_SLEUTEL}.txt`, urlList }),
+    body: JSON.stringify({ host: "www.bartmooi.nl", key: INDEXNOW_SLEUTEL, keyLocation: `${SITE}/${INDEXNOW_SLEUTEL}.txt`, urlList }),
   }).catch(() => null);
   return { status: r?.status ?? 0, aantal: urlList.length };
 }

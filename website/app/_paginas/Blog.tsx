@@ -11,7 +11,7 @@ export function Blog() {
   const posts = postsVoor(taal);
   return (
     <>
-      <Schema pad="/blog/" type="CollectionPage" kruimel={[["Home", "/"], ["Blog", "/blog/"]]} extra={[{ "@type": "Blog", "@id": "https://bartmooi.nl/blog/#blog", name: "Tips en nieuws over kozijnen", url: "https://bartmooi.nl/blog/", inLanguage: "nl-NL", publisher: { "@id": "https://bartmooi.nl/#bedrijf" }, blogPost: posts.map((p) => blogPost(p, taal)) }]} />
+      <Schema pad="/blog/" type="CollectionPage" kruimel={[["Home", "/"], ["Blog", "/blog/"]]} extra={[{ "@type": "Blog", "@id": "https://www.bartmooi.nl/blog/#blog", name: "Tips en nieuws over kozijnen", url: "https://www.bartmooi.nl/blog/", inLanguage: "nl-NL", publisher: { "@id": "https://www.bartmooi.nl/#bedrijf" }, blogPost: posts.map((p) => blogPost(p, taal)) }]} />
       <Titel kop="Tips en nieuws {{over kozijnen}}" klein />
       <section className="pb-[60px] md:pb-[108px]">
         <Container className="grid gap-x-[30px] gap-y-[60px] md:grid-cols-2">
